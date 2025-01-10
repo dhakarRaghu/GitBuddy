@@ -5,6 +5,7 @@ import  useProject from '~/hooks/use-project'
 import { ExternalLink, Github } from 'lucide-react'
 import Link from 'next/link'
 import{ Button} from '~/components/ui/button'
+import CommitLog from './commit-log'
 
 const DashBoardPage = () => {
     const {user} = useUser()
@@ -43,7 +44,7 @@ const DashBoardPage = () => {
         </ div>
       </div>
       <div className='mt-8'></div>
-      commit history
+       <CommitLog/>
     </div>
   )
 }
