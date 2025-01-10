@@ -6,6 +6,8 @@ import { type Metadata } from "next";
 import { TRPCReactProvider } from "~/trpc/react";
 
 import { ClerkProvider } from "@clerk/nextjs";
+import { Toast } from "~/components/ui/toast";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "GitBuddy",
@@ -21,6 +23,7 @@ export default function RootLayout({
     <html lang="en" className={`${GeistSans.variable}`}>
       <body>
         <TRPCReactProvider>{children}</TRPCReactProvider>
+        <Toaster richColors/>
       </body>
     </html>
 
