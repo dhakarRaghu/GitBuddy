@@ -2,6 +2,7 @@ import { log } from "console";
 import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 import { z } from 'zod'
+import { pollCommits } from "~/lib/github";
 // TRPC router help to communicate with the  frontend and backend
 export const projectRouter = createTRPCRouter({
     createProject: protectedProcedure.input(
@@ -19,7 +20,7 @@ export const projectRouter = createTRPCRouter({
         if (!user) {
             throw new Error("User not found");
         }
-        // console.log("User ID in context:", ctx.user.userId);
+        console.log("User ID in context:", ctx.user.userId);
         // Create project and associate with user
         const project = await ctx.db.project.create({
             data: {
@@ -32,7 +33,7 @@ export const projectRouter = createTRPCRouter({
                 },
             },
         });
-
+        await pollCommits(project.id);
         return project;
     }),
     getProjects: protectedProcedure.query(async ({ ctx }) => {
