@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { pollCommits } from "~/lib/github";
 import { indexGithubRepo } from "~/lib/github-loader";
 import { get } from "http";
+import { issue } from "@uiw/react-md-editor";
 // TRPC router help to communicate with the  frontend and backend
 export const projectRouter = createTRPCRouter({
     createProject: protectedProcedure.input(
@@ -40,6 +41,7 @@ export const projectRouter = createTRPCRouter({
         return project;
     }),
     getProjects: protectedProcedure.query(async ({ ctx }) => {
+        
         const projects = await ctx.db.project.findMany({
             where: {
                 userToProjects: {
@@ -50,7 +52,7 @@ export const projectRouter = createTRPCRouter({
                 deletedAt: null,
             },
         });
-
+        console.log("getProject Projects:", projects , "User ID:", ctx.user.userId);
         return projects;
     }),
     getCommits: protectedProcedure.input(z.object({
@@ -105,7 +107,8 @@ export const projectRouter = createTRPCRouter({
         });
         return meeting;
     }),
-
-
-
+    getMeetings : protectedProcedure.input(z.object({projectId : z.string()})).query(async ({ctx, input}) => {
+        console.log("Fetching meetings for project:", input.projectId);
+        return await ctx.db.meeting.findMany({ where : {projectId : input.projectId }, include : {issue : true}})
+    })
 })
