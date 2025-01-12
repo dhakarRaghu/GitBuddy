@@ -1,3 +1,6 @@
+-- CreateExtension
+CREATE EXTENSION IF NOT EXISTS "vector";
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -18,7 +21,7 @@ CREATE TABLE "Project" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "name" TEXT NOT NULL,
-    "githubUrl" TEXT NOT NULL,
+    "githubUrl" TEXT,
     "deletedAt" TIMESTAMP(3),
 
     CONSTRAINT "Project_pkey" PRIMARY KEY ("id")
@@ -35,6 +38,34 @@ CREATE TABLE "UserToProject" (
     CONSTRAINT "UserToProject_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "SourceCodeEmbedding" (
+    "id" TEXT NOT NULL,
+    "summaryEmbedding" vector(768),
+    "sourceCode" TEXT NOT NULL,
+    "fileName" TEXT NOT NULL,
+    "summary" TEXT NOT NULL,
+    "projectId" TEXT NOT NULL,
+
+    CONSTRAINT "SourceCodeEmbedding_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Commit" (
+    "id" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "projectId" TEXT NOT NULL,
+    "commitMessage" TEXT NOT NULL,
+    "commitHash" TEXT NOT NULL,
+    "commitAuthorName" TEXT NOT NULL,
+    "commitAuthorAvatar" TEXT NOT NULL,
+    "commitDate" TIMESTAMP(3) NOT NULL,
+    "summary" TEXT NOT NULL,
+
+    CONSTRAINT "Commit_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "User_emailAddresses_key" ON "User"("emailAddresses");
 
@@ -46,3 +77,9 @@ ALTER TABLE "UserToProject" ADD CONSTRAINT "UserToProject_userId_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "UserToProject" ADD CONSTRAINT "UserToProject_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SourceCodeEmbedding" ADD CONSTRAINT "SourceCodeEmbedding_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "Commit" ADD CONSTRAINT "Commit_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

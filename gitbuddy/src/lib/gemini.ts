@@ -1,14 +1,17 @@
 import {GoogleGenerativeAI} from '@google/generative-ai';
 
+import { Document } from '@langchain/core/documents';
+import { generate } from 'node_modules/@langchain/core/dist/utils/fast-json-patch';
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const model = genAI.getGenerativeModel({
     model : 'gemini-1.5-flash'
 })
-
-export const aiSummariseCommit = async (diff : string) => {
+export const aiSummariseCommit = async (diff: string) => {
+    const summaries: string[] = [];
     try {
-    const response = await model.generateContent([
+      const response = await model.generateContent([
         `You are an expert programmer, and you are trying to summarize a git diff.
         Reminders about the git diff format:
         For every file, there are a few metadata lines, like (for example):
@@ -30,12 +33,110 @@ export const aiSummariseCommit = async (diff : string) => {
         Lowered numeric tolerance for test files
         The last comment does not include the file names because there were more than two relevant files in the hypothetical commit.
         Do not include parts of the example in your summary. It is given only as an example of appropriate comments.
-        Please summarise the following diff file: ${diff}`
-    ]);
-    const summary = response.response.text();
-    return summary.trim() === "" ? "No summary available" : summary;
-} catch (error) {
-    console.error("Error during AI commit summarization:" , error);
+        Please summarise the following diff file: ${diff}`,
+      ]);
+  
+      const summary = response.response.text();
+  
+      if (summary.length) summaries.push(summary);
+      console.log("Summary response:", summary);
+      return summary.trim() === "" ? "No summary available" : summary;
+    } catch (error) {
+      console.error("Error during AI commit summarization:", error);
+  
+      // Check if the error is due to API rate limit
+      if ((error as any)?.response?.status === 403 || (error as any)?.response?.status === 429) {
+        console.log("API rate limit reached. Returning partial summaries.");
+        return summaries.join("\n");
+      } else {
+        return summaries.join("\n"); // Return whatever summaries were collected
+      }
+    }
+  };
+
+  export async function generateEmbedding(summary: string) {
+    console.log("Generating embedding for \n", summary);
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "text-embedding-004",
+      });
+  
+      const result = await model.embedContent(summary);
+      const embedding = result.embedding;
+      return embedding.values;
+    } catch (error) {
+      console.error("Error in generateEmbedding:", error);
+  
+      // Handle rate limit or other errors
+      if ((error as any)?.response?.status === 403 || (error as any)?.response?.status === 429) {
+        console.log("API rate limit reached. Returning partial embeddings.");
+        return []; // Return empty array to signify partial embeddings
+      }
+      throw error; // Rethrow the error if not rate limit related
+    }
+  }
+
+// export async function generateEmbedding(summary: string) {
+//     console.log("Generating embedding for \n", summary);
+//     try {
+//         const model = genAI.getGenerativeModel({
+//             model: "text-embedding-004",
+//         });
+
+//         const result = await model.embedContent(summary);
+//         const embedding = result.embedding;
+//         return embedding.values;
+//     } catch (error) {
+//         console.error("Error in generateEmbedding:", error);
+//         throw error;
+//     }
+// }
+
+export async function summariseCode(doc: Document) {
+    console.log("Getting summary for\n", doc.metadata.source);
+    const canSummarise = []
+    try {
+        const code = doc.pageContent.slice(0, 5000); // Limit to 10000 characters
+        const response = await model.generateContent([
+            `You are an intelligent senior software engineer specializing in onboarding junior software engineers onto projects.
+            You are onboarding a junior software engineer and explaining the purpose of the ${doc.metadata.source} file.
+            Here is the code:
+            ${code}
+            Give a summary no more than 100 words of the code above.`,
+        ]);
+        // console.log("Summary response:", response.response.text());
+        canSummarise.push(response.response.text());
+        return response.response.text();
+    } catch (error) {
+        console.error("n\Error in summariseCode:", error);
+        return '';
+        // throw error;
+    }
 }
 
-}
+
+// export async function summariseCode(doc: Document) {
+//     console.log("getting summary for", doc.metadata.source);
+//     const code = doc.pageContent.slice(0, 10000); // Limit to 10000 characters
+//     const response = await model.generateContent([
+//         `You are an intelligent senior software engineer who specialises in onboarding junior software engineers onto projects.
+//         You are onboarding a junior software engineer and explaining to them the purpose of the ${doc.metadata.source} file.
+//     Here is the code:
+//     ${code}
+//     Give a summary no more than 100 words of the code above.`
+//     ]);
+//     return response.response.text().trim();
+// }
+
+
+// export async function generateEmbedding(summary : string){
+//     const model ; genAI.getGenerativeModel({
+//         model :"text-embedding-004"
+//     })
+
+//     const result = await model.embedContent(summary)
+//     const embedding = result.embedding
+//     return embedding.values
+// }
+
+// console.log(await generateEmbedding("hello world"))

@@ -27,24 +27,32 @@ export const getCommitHashes = async (githubUrl: string): Promise<Response[]> =>
         throw new Error("Invalid github url");
         }
     
-   const { data } = await octokit.rest.repos.listCommits({
+        try{
+          const { data } = await octokit.rest.repos.listCommits({
             owner,
             repo
         });
+          const sortedCommits = data.sort((a: any, b: any) => new Date(b.commit.author.date).getTime() - new Date(a.commit.author.date).getTime()) as any[];
+    return sortedCommits.slice(0, 10).map((commit: any) => ({
+      commitHash: commit.sha as string,
+      commitMessage: commit.commit.message ?? "",
+      commitAuthorName: commit.commit?.author?.name ?? "",
+      commitAuthorAvatar: commit?.author?.avatar_url ?? "",
+      commitDate: commit.commit?.author?.date ?? ""
+    }));
 
-  const sortedCommits = data.sort((a: any, b: any) => new Date(b.commit.author.date).getTime() - new Date(a.commit.author.date).getTime()) as any[];
-  return sortedCommits.slice(0, 10).map((commit: any) => ({
-    commitHash: commit.sha as string,
-    commitMessage: commit.commit.message ?? "",
-    commitAuthorName: commit.commit?.author?.name ?? "",
-    commitAuthorAvatar: commit?.author?.avatar_url ?? "",
-    commitDate: commit.commit?.author?.date ?? ""
-  }));
+        }
+        catch (error) {
+          console.error('Error fetching commits:', error);
+          throw new Error('Failed to fetch commits');
+        }
 };
 
 // console.log(await getCommitHashes(githubUrl));
 
 export const pollCommits = async (projectId: string) => {
+  console.log(`Polling commits for project ${projectId}`);
+
   const { project, githubUrl } = await fetchProjectGithubUrl(projectId);
   const commitHashes = await getCommitHashes(githubUrl);
   const unprocessedCommits = await filterUnprocessedCommits(projectId, commitHashes);
@@ -61,7 +69,7 @@ export const pollCommits = async (projectId: string) => {
       return ""; 
     })
    
-    // console.log("Summaries to be saved:", summaries); 
+    console.log("Summaries to be saved:", summaries); 
 
   const commits = await db.commit.createMany({
     data: summaries.map((summary, index) => {
@@ -76,24 +84,36 @@ export const pollCommits = async (projectId: string) => {
     }
     }),
   });
-  // console.log("Commits saved:", commits);  
+  console.log("Commits saved:", commits);  
   return commits;
 };
 
 
 
-async function summariseCommit(githubUrl: string , commitHash: string) {
-  // Correct the URL string with backticks for proper interpolation
-  const { data } = await axios.get(`${githubUrl}/commit/${commitHash}.diff`, {
+// github.ts
+export const summariseCommit = async (githubUrl: string, commitHash: string) => {
+  try {
+    const { data } = await axios.get(`${githubUrl}/commit/${commitHash}.diff`, {
       headers: {
-          'Accept': 'application/vnd.github.v3.diff'
-      }
-  });
+        Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+        Accept: "application/vnd.github.v3.diff",
+      },
+    });
 
-  // Return the summarized commit message from AI service
+    return await aiSummariseCommit(data) || "Summary unavailable";
+  } catch (error) {
+    console.error("Error summarising commit:", error);
 
-  return await aiSummariseCommit(data) || "";
-}
+    // Check if the error is related to rate limiting (HTTP 403 or 429)
+    if ((error as any)?.response?.status === 403 || (error as any)?.response?.status === 429) {
+      console.log("API rate limit reached. Returning partial summaries.");
+      return "Rate limit reached, partial summary available.";
+    } else {
+      return "Error summarising commit";  // Generic error message
+    }
+  }
+};
+
 
 async function fetchProjectGithubUrl(projectId: string): Promise<{ project: any, githubUrl: string }> {
   const project = await db.project.findUnique({
