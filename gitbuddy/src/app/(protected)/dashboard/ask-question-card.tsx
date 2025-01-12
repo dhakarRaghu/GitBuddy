@@ -15,6 +15,7 @@ import { api } from '~/trpc/react';
 import { toast } from 'sonner';
 import { ScrollArea } from '~/components/ui/scroll-area';
 import MDEditor from '@uiw/react-md-editor';
+import useRefetch from '~/hooks/use-refetch';
 
 interface FileReference {
   fileName: string;
@@ -22,7 +23,7 @@ interface FileReference {
   summary: string;
 }
 
-const AskQuestionCard: React.FC = () => {
+export default function AskQuestionCard() {
   const { project } = useProject();
   const [open, setOpen] = React.useState(false);
   const [question, setQuestion] = React.useState('');
@@ -30,6 +31,7 @@ const AskQuestionCard: React.FC = () => {
   const [filesReferences, setFilesReferences] = React.useState<FileReference[]>([]);
   const [answer, setAnswer] = React.useState('');
   const saveAnswer = api.project.saveAnswer.useMutation();
+  const refetch = useRefetch();
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -66,7 +68,11 @@ const AskQuestionCard: React.FC = () => {
         filesReferences,
       },
       {
-        onSuccess: () => toast.success('Answer saved successfully'),
+        onSuccess: () => {
+          toast.success('Answer saved successfully');
+          refetch();
+          setOpen(false);
+        },
         onError: () => toast.error('Failed to save answer'),
       }
     );
@@ -103,7 +109,7 @@ const AskQuestionCard: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      <Card className="col-span-3">
+      <Card className="h-full">
         <CardHeader>
           <CardTitle>Ask GitBuddy</CardTitle>
         </CardHeader>
@@ -130,7 +136,4 @@ const AskQuestionCard: React.FC = () => {
       </Card>
     </>
   );
-};
-
-export default AskQuestionCard;
-
+}

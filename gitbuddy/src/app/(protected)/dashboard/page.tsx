@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { Button } from '~/components/ui/button'
 import CommitLog from './commit-log'
 import AskQuestionCard from './ask-question-card'
+import MeetingCard from './meeting-card'
 
 const DashBoardPage = () => {
     const { user } = useUser()
@@ -47,8 +48,7 @@ const DashBoardPage = () => {
                     <AskQuestionCard />
                 </div>
                 <div className='col-span-2'>
-                    {/* Replace this placeholder with your actual component for the meeting card */}
-                    <div className="border p-4 rounded-md h-full">Meeting Card Placeholder</div>
+                    <MeetingCard />
                 </div>
             </div>
 
