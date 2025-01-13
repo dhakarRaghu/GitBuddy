@@ -52,10 +52,10 @@ export function AppSidebar() {
     <Sidebar collapsible="icon" variant="floating">
       <SidebarHeader>
         <div className="flex items-center gap-2">
-          <Image src="/logo5.png" alt="logo" width={80} height={80} />
+          <Image src="/logo4.png" alt="logo" width={80} height={80} />
           {open && (
-            <h1 className="text-2xl font-extrabold text-primary/90 tracking-wide leading-tight drop-shadow-md">
-              GitBuddy
+            <h1  className="text-2xl font-extrabold text-primary/90 tracking-wide leading-tight drop-shadow-md">
+             <Link href='/' >GitBuddy</Link>
             </h1>
           )}
         </div>

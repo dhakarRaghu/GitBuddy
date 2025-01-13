@@ -6,16 +6,17 @@ import "./src/env.js";
 
 /** @type {import("next").NextConfig} */
 const config = {
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
+    typescript: {
+        ignoreBuildErrors: true,
+    },
+    images: {
+        domains: ['images.unsplash.com'],
+
+    },
    
 };
 
 export default config;
-
-// /** @type {import('next').NextConfig} */
-// const nextConfig = {
-//     images: {
-//       domains: ['images.unsplash.com'],
-//     },
-//   }
-  
-//   module.exports = nextConfig

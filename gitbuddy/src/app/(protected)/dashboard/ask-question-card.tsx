@@ -88,10 +88,21 @@ export default function AskQuestionCard() {
               <span>GitBuddy Answer</span>
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-grow">
+          <ScrollArea className="flex-grow max-h-[70vh] overflow-y-auto">
             <div className="space-y-4 p-4">
-              <MDEditor.Markdown source={answer} className="prose dark:prose-invert max-w-none" />
-              <CodeReferences filesReferences={filesReferences} />
+              {/* Answer Section */}
+              <div className="bg-muted p-4 rounded-md">
+                <MDEditor.Markdown source={answer} className="prose dark:prose-invert max-w-none" />
+              </div>
+              {/* References Section */}
+              {filesReferences.length > 0 && (
+                <div className="border-t pt-4">
+                  <h3 className="font-bold mb-2">Code References</h3>
+                  <div className="max-h-[50vh] overflow-y-auto overflow-x-auto space-y-2">
+                    <CodeReferences filesReferences={filesReferences} />
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
           <DialogFooter className="flex justify-between items-center mt-4">
