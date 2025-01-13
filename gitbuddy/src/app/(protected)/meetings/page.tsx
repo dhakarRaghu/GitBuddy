@@ -69,9 +69,14 @@ import { api } from '~/trpc/react'
 import Link from 'next/link'
 import { Badge } from '~/components/ui/badge'
 import { Loader2 } from 'lucide-react'
+import { Button } from '~/components/ui/button'
+import { toast } from 'sonner'
+import useRefetch from '~/hooks/use-refetch'
+
 
 const MeetingsPage = () => {
     const { projectId } = useProject()
+    const refetch = useRefetch()
     
     const { data: meetings, isLoading: meetingsLoading } = api.project.getMeetings.useQuery(
         { projectId: projectId || '' },
@@ -80,6 +85,7 @@ const MeetingsPage = () => {
             refetchInterval: 4000
         }
     )
+    const deleteMeeting = api.project.deleteMeeting.useMutation()
 
 
     if (!projectId) {
@@ -119,10 +125,22 @@ const MeetingsPage = () => {
                                 <p className='truncate'>{meeting.issue.length} issues</p>
                             </div>
                         </div>
-                        <div className='flex items-center gap-x-4'>
-                            <Link href={`/meeting/${meeting.id}`} className='text-primary'>
+                        <div className='flex items-center gap-x-4 '>
+                            <Link href={`/meetings/${meeting.id}`} className='text-primary bg-primary-100 px-2 py-1 rounded-md bg-slate-200'>
                                 View Meeting
                             </Link>
+                            <Button disabled={deleteMeeting.isPending} variant='destructive'  onClick={() => deleteMeeting.mutate({ meetingId: meeting.id },{
+                                onSuccess: () => {
+                                    console.log('Meeting deleted successfully')
+                                    toast.success('Meeting deleted successfully')
+                                    refetch()
+                                },
+                                onError: (error) => {
+                                    console.error('Error deleting meeting:', error)
+                                }
+                            })}>
+                                Delete
+                            </Button>
                         </div>
                     </li>    
                 ))}

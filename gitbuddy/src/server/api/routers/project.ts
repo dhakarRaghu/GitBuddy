@@ -6,6 +6,7 @@ import { pollCommits } from "~/lib/github";
 import { indexGithubRepo } from "~/lib/github-loader";
 import { get } from "http";
 import { issue } from "@uiw/react-md-editor";
+import { Archive } from "lucide-react";
 // TRPC router help to communicate with the  frontend and backend
 export const projectRouter = createTRPCRouter({
     createProject: protectedProcedure.input(
@@ -110,5 +111,24 @@ export const projectRouter = createTRPCRouter({
     getMeetings : protectedProcedure.input(z.object({projectId : z.string()})).query(async ({ctx, input}) => {
         console.log("Fetching meetings for project:", input.projectId);
         return await ctx.db.meeting.findMany({ where : {projectId : input.projectId }, include : {issue : true}})
-    })
+    }),
+    deleteMeeting: protectedProcedure.input(z.object({meetingId : z.string()})).mutation(async ({ctx, input}) => {
+        return await ctx.db.meeting.delete({where : {id : input.meetingId}});
+    }),
+    getMeetingById : protectedProcedure.input(z.object({meetingId : z.string()})).query(async ({ctx, input}) => {
+        return await ctx.db.meeting.findUnique({where : {id : input.meetingId} , include : {issue : true}});
+    }),
+    archiveProject : protectedProcedure.input(z.object({projectId : z.string()})).mutation(async ({ctx, input}) => {
+        return await ctx.db.project.update({where : {id : input.projectId}, data : {deletedAt : new Date()}});
+    }),
+    getTeamMembers : protectedProcedure.input(z.object({projectId : z.string()})).query(async ({ctx, input}) => {
+        return await ctx.db.userToProject.findMany({where : {projectId : input.projectId}, include : {user : true}});
+    }),
+    getMyCredits : protectedProcedure.query(async ({ctx}) => {
+        if (!ctx.user.userId) {
+            throw new Error("User ID is null");
+        }
+        return await ctx.db.user.findUnique({where : {id : ctx.user.userId} , select : {credits : true}});
+    }),
+
 })

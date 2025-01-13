@@ -1,6 +1,6 @@
 'use client'
 
-import React, { use } from 'react'
+import React, { useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { Card } from '~/components/ui/card'
 import { Button } from '~/components/ui/button'
@@ -9,16 +9,32 @@ import { generatePresignedUrl } from '~/lib/uploadFile'
 import { Progress } from '~/components/ui/progress'
 import { toast } from 'sonner'
 import { api } from '~/trpc/react'
-import  useProject  from '~/hooks/use-project'
+import useProject from '~/hooks/use-project'
 import { useRouter } from 'next/navigation'
+import { useMutation } from '@tanstack/react-query'
+import axios from 'axios'
 
 export default function MeetingCard() {
-  const [progress, setProgress] = React.useState(0)
-  const [isUploading, setIsUploading] = React.useState(false)
+  const [progress, setProgress] = useState(0)
+  const [isUploading, setIsUploading] = useState(false)
   const uploadMeeting = api.project.uploadMeeting.useMutation()
-  const {project} = useProject()
+  const { project } = useProject()
   const router = useRouter()
 
+  const processMeeting = useMutation({
+    mutationFn: async ({ meetingUrl, meetingId, projectId }: { meetingUrl: string; meetingId: string; projectId: string }) => {
+      const response = await axios.post('/api/process-meeting', { meetingUrl, meetingId, projectId })
+      return response.data
+    },
+    onSuccess: (data) => {
+      console.log('Meeting processed successfully:', data)
+      toast.success(`Meeting processed successfully. ${data.summariesCount} summaries generated.`)
+    },
+    onError: (error: any) => {
+      console.error('Error processing meeting:', error.response?.data || error)
+      toast.error(`Failed to process meeting: ${error.response?.data?.details || error.message}`)
+    }
+  })
 
   const uploadFile = async (file: File): Promise<{ success: boolean; url?: string; error?: string }> => {
     try {
@@ -57,66 +73,62 @@ export default function MeetingCard() {
     }
   }
 
+  const handleFileDrop = async (acceptedFiles: File[]) => {
+    setIsUploading(true)
+    const file = acceptedFiles[0]
+    if (!file) {
+      toast.error('No file selected', {
+        description: 'Please select a file to upload',
+      })
+      setIsUploading(false)
+      return
+    }
+
+    try {
+      const uploadResponse = await uploadFile(file)
+
+      if (!uploadResponse.success || !uploadResponse.url) {
+        throw new Error(uploadResponse.error || 'Failed to upload file')
+      }
+
+      console.log('File uploaded successfully:', uploadResponse.url)
+
+      if (!project) {
+        throw new Error('Project not found')
+      }
+
+      const meeting = await uploadMeeting.mutateAsync({
+        projectId: project.id,
+        meetingUrl: uploadResponse.url,
+        name: file.name,
+      })
+
+      toast.success('File uploaded successfully')
+      router.push('/meetings')
+
+      await processMeeting.mutateAsync({
+        meetingUrl: uploadResponse.url,
+        meetingId: meeting.id,
+        projectId: project.id,
+      })
+    } catch (error: any) {
+      console.error('Upload error:', error)
+      toast.error('Failed to upload file', {
+        description: error.message || 'An unexpected error occurred',
+      })
+    } finally {
+      setIsUploading(false)
+      setProgress(0)
+    }
+  }
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       'audio/*': ['.mp3', '.wav', '.m4a'],
     },
     multiple: false,
     maxSize: 50000000,
-    onDrop: async (acceptedFiles) => {
-      setIsUploading(true)
-      const file = acceptedFiles[0]
-      if (file) {
-        try {
-          const uploadResponse = await uploadFile(file)
-    
-          if (uploadResponse.success && uploadResponse.url) {
-            console.log('File URL:', uploadResponse.url)
-            if (project) {
-              uploadMeeting.mutate({
-                projectId: project.id,
-                meetingUrl: uploadResponse.url,
-                name: file.name,
-            },{
-              onSuccess: () => {
-                toast.success('File uploaded successfully')
-                router.push(`/meetings`)
-              },
-              onError: () => {
-                toast.error('Failed to upload file')
-              }
-            })
-            } else {
-              toast.error('Project not found', {
-                description: 'Please select a valid project',
-              })
-            }
-            toast.success('File uploaded successfully', {
-              description: `File URL: ${uploadResponse.url}`,
-            })
-          } else {
-            console.error('Upload failed:', uploadResponse.error)
-            toast.error('Failed to upload file', {
-              description: uploadResponse.error,
-            })
-          }
-        } catch (error) {
-          console.error('Upload error:', error)
-          toast.error('Failed to upload file', {
-            description: 'An unexpected error occurred',
-          })
-        } finally {
-          setIsUploading(false)
-          setProgress(0)
-        }
-      } else {
-        console.error('No file was selected for upload.')
-        toast.error('No file selected', {
-          description: 'Please select a file to upload',
-        })
-        setIsUploading(false)
-      }
-    },
+    onDrop: handleFileDrop,
   })
 
   return (
@@ -152,6 +164,8 @@ export default function MeetingCard() {
 }
 
 
+
+
 // 'use client'
 
 // import React from 'react'
@@ -160,7 +174,7 @@ export default function MeetingCard() {
 // import { Card } from '~/components/ui/card'
 // import { Button } from '~/components/ui/button'
 // import { Presentation, Upload } from 'lucide-react'
-// import { uploadFile } from '~/lib/firebase'
+// import { uploadFile } from '~/lib/uploadFile'
 // import { Progress } from '~/components/ui/progress'
 
 // export default function MeetingCard() {

@@ -39,7 +39,7 @@ export const aiSummariseCommit = async (diff: string) => {
       const summary = response.response.text();
   
       if (summary.length) summaries.push(summary);
-      console.log("Summary response:", summary);
+      // console.log("Summary response:", summary);
       return summary.trim() === "" ? "No summary available" : summary;
     } catch (error) {
       console.error("Error during AI commit summarization:", error);
@@ -55,7 +55,7 @@ export const aiSummariseCommit = async (diff: string) => {
   };
 
   export async function generateEmbedding(summary: string) {
-    console.log("Generating embedding for \n", summary);
+    // console.log("Generating embedding for \n", summary);
     try {
       const model = genAI.getGenerativeModel({
         model: "text-embedding-004",
@@ -93,7 +93,7 @@ export const aiSummariseCommit = async (diff: string) => {
 // }
 
 export async function summariseCode(doc: Document) {
-    console.log("Getting summary for\n", doc.metadata.source);
+    // console.log("Getting summary for\n", doc.metadata.source);
     const canSummarise = []
     try {
         const code = doc.pageContent.slice(0, 5000); // Limit to 10000 characters
