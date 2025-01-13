@@ -4,6 +4,8 @@ import React from 'react'
 import { api } from '~/trpc/react'
 import { toast } from 'sonner'
 import useRefetch from '~/hooks/use-refetch'
+import { create } from 'domain'
+import { Info } from 'lucide-react'
 
 type FormInputs = {
     repoUrl: string
@@ -14,27 +16,35 @@ type FormInputs = {
 const CreatePage = () => {
     const { register, handleSubmit, reset } = useForm<FormInputs>()
     const createProject = api.project.createProject.useMutation()
+    const checkCredit = api.project.checkCredit.useMutation()
     const refetch = useRefetch()
 
     function onSubmit(data: FormInputs) {
-
-       createProject.mutate({
-           name: data.projectName,
-           githubUrl: data.repoUrl,
-          githubToken: (data.githubToken==="") ? process.env.GITHUB_TOKEN : data.githubToken,
-       },{
-            onSuccess: () => {
-                toast.success('Project created successfully')
-                refetch()
-                reset()
-            },
-            onError: (error) => {
-                // console.error("Error creating project:", error);
-                toast.error('Failed to create project')
-            }
-       })
-        return true
+        if(!!checkCredit.data){
+            createProject.mutate({
+                githubUrl: data.repoUrl,
+                name: data.projectName,
+                githubToken: data.githubToken
+            },{
+                onSuccess: () => {
+                    toast.success('Project created successfully')
+                    reset()
+                    refetch()
+                },
+                onError: (error) => {
+                    toast.error('Failed to create project')
+                }
+            })
     }
+    else{
+        checkCredit.mutate({
+            githubUrl: data.repoUrl,
+            githubToken: data.githubToken
+        })
+    }
+}
+
+const hasEnoughCredits = checkCredit?.data?.userCredits ? checkCredit.data.fileCount <= checkCredit.data.userCredits : true
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -84,6 +94,7 @@ const CreatePage = () => {
                         <div>
                             <label htmlFor="githubToken" className="block text-gray-700 font-medium">Github Token (optional)</label>
                             <input
+
                                 id="githubToken"
                                 type="text"
                                 placeholder="Enter Github token"
@@ -91,13 +102,30 @@ const CreatePage = () => {
                                 className="mt-2 block w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
                             />
                         </div>
+                        {!!checkCredit.data && (
+                            <>
+                                <div className="mt-4 bg-orange-50 px-4 py-2 rounded-md border border-orange-200 text-orange-700">
+                                    <div className="flex items-center gap-2">
+                                        <Info className="size-4" />
+                                        <p className="text-sm">
+                                            You will be charged <strong>{checkCredit.data?.fileCount}</strong> credits for this repository. 
+                                        </p>
+                                    </div>
+                                    <p className="text-sm text-blue-600 ml-6">
+                                        You have <strong>{checkCredit.data?.userCredits}</strong> credits remaining. 
+                                    </p>
+                                </div>
+                            </>
+                        )}
 
                         <div className="mt-6">
-                            <button
-                                type="submit" disabled={createProject.isPending}
+                            <button disabled={createProject.isPending || checkCredit.isPending || !hasEnoughCredits}
+                             
+                                type="submit" 
                                 className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-500 focus:outline-none"
                             >
-                                Create Project
+                                {!!checkCredit.data ? 'Create Project' : 'Check Credits'}
+                             
                             </button>
                         </div>
                     </form>

@@ -3,10 +3,11 @@ import { createTRPCRouter, protectedProcedure, publicProcedure } from "../trpc";
 
 import { z } from 'zod'
 import { pollCommits } from "~/lib/github";
-import { indexGithubRepo } from "~/lib/github-loader";
+import { checkCredit, indexGithubRepo } from "~/lib/github-loader";
 import { get } from "http";
 import { issue } from "@uiw/react-md-editor";
 import { Archive } from "lucide-react";
+import { check } from "prettier";
 // TRPC router help to communicate with the  frontend and backend
 export const projectRouter = createTRPCRouter({
     createProject: protectedProcedure.input(
@@ -25,12 +26,22 @@ export const projectRouter = createTRPCRouter({
             throw new Error("User not found");
         }
         console.log("User ID in context:", ctx.user.userId);
+
+        const currentCredits = user.credits || 0;
+        const fileCount = await checkCredit(input.githubUrl, input.githubToken ?? process.env.GITHUB_TOKEN);
+
+        if(currentCredits < fileCount){
+            throw new Error("Insufficient credits");
+        }
+
         // Create project and associate with user
         const project = await ctx.db.project.create({
             data: {
+                
                 githubUrl: input.githubUrl,
                 name: input.name,
-                userToProjects: {
+
+               userToProjects: {
                     create: {
                         userId: ctx.user.userId!,
                     },
@@ -39,6 +50,7 @@ export const projectRouter = createTRPCRouter({
         });
         await indexGithubRepo(project.id, input.githubUrl, input.githubToken ?? process.env.GITHUB_TOKEN);
         await pollCommits(project.id);
+        await ctx.db.user.update({ where :{id : ctx.user.userId!}, data : {credits : {decrement : fileCount}}});
         return project;
     }),
     getProjects: protectedProcedure.query(async ({ ctx }) => {
@@ -129,6 +141,12 @@ export const projectRouter = createTRPCRouter({
             throw new Error("User ID is null");
         }
         return await ctx.db.user.findUnique({where : {id : ctx.user.userId} , select : {credits : true}});
+    }),
+
+    checkCredit: protectedProcedure.input(z.object({githubUrl : z.string(), githubToken : z.string().optional()})).mutation(async ({ctx, input}) => {
+        const fileCount =  await checkCredit(input.githubUrl, input.githubToken);
+        const userCredits = await ctx.db.user.findUnique({where : {id : ctx.user.userId!}, select : {credits : true}});
+        return {fileCount, userCredits : userCredits?.credits || 0};
     }),
 
 })

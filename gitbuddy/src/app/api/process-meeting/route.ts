@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, summariesCount: summaries.length }, { status: 200 });
   } catch (error) {
     console.error('Error processing meeting:', error);
-    return NextResponse.json({ error: "Internal Server Error", details: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error", details: (error as Error).message }, { status: 500 });
   }
 }
 

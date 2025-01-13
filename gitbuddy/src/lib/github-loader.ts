@@ -4,6 +4,51 @@ import { GithubRepoLoader } from '@langchain/community/document_loaders/web/gith
 import { Document } from '@langchain/core/documents';
 import { generateEmbedding, summariseCode } from './gemini';
 import { db } from '~/server/db';
+import { auth } from '@clerk/nextjs/server';
+import { Octokit } from 'octokit';
+
+const getFileCount = async (path :string  , octokit : Octokit, githubOwner : string, githubRepo : string , acc : number=0) => {
+    const {data} = await octokit.rest.repos.getContent({
+        owner: githubOwner,
+        repo: githubRepo,
+        path
+    });
+    if(!Array.isArray(data) && data.type === 'file'){
+        return acc + 1;
+    }
+    if(Array.isArray(data)){
+        let fileCount = 0;
+        const directories: string[] = [];
+        for(const item of data){
+            if(item.type === 'file'){
+                fileCount++;
+            }else if(item.type === 'dir'){
+                directories.push(item.path);
+            }
+        }
+        if(directories.length > 0){
+            const directoryCounts = await Promise.all(
+                directories.map(dirPath => getFileCount(dirPath , octokit,githubOwner,githubRepo,0)  )
+            );
+            fileCount += directoryCounts.reduce((acc, count) => acc + count, 0);
+        }
+        return acc + fileCount;
+    }
+    return acc;
+}
+
+export const checkCredit = async(githubUrl : string , githubToken? : string) => {
+    if(githubToken===undefined || githubToken === ''){githubToken = process.env.GITHUB_TOKEN}
+    //find how many files are there in the repo
+    const octokit = new Octokit({auth : githubToken});
+    const githubOwner = githubUrl.split('/')[3];
+    const githubRepo = githubUrl.split('/')[4];
+    if(!githubOwner || !githubRepo){
+        throw new Error("Invalid github url");
+    }
+    const fileCount = await getFileCount('', octokit, githubOwner, githubRepo);
+    return fileCount;
+}
 
 export const loadGithubRepo = async (githubUrl: string, githubToken: string) => {
     const loader = new GithubRepoLoader(githubUrl,{
@@ -22,6 +67,7 @@ export const indexGithubRepo = async (projectId: string, githubUrl: string, gith
     console.log(`Indexing github repo ${githubUrl}`);
     const docs = await loadGithubRepo(githubUrl, githubToken);
     const allEmbeddings = await generateEmbeddings(docs);
+    if(githubToken===undefined || githubToken === ''){githubToken = process.env.GITHUB_TOKEN!}
     
     await Promise.allSettled(allEmbeddings.map(async (embedding, index) =>{
         console.log("\n")
