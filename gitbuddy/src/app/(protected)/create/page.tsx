@@ -37,7 +37,7 @@ const CreatePage = () => {
             redirect('/dashboard');
           },
           onError: () => {
-            toast.error('Failed to create project');
+            // toast.error('Failed to create project');
           },
         }
       );
