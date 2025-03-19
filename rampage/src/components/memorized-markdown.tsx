@@ -6,7 +6,7 @@ import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
 
 function parseMarkdownIntoBlocks(markdown: string): string[] {
-  return markdown.split(/\n\n+/).filter((block) => block.trim()); // Split by double newlines, filter empty blocks
+  return markdown.split(/\n\n+/).filter((block) => block.trim());
 }
 
 const MemoizedMarkdownBlock = memo(

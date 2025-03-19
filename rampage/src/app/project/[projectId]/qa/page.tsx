@@ -1,172 +1,198 @@
-import React from "react";
-import { notFound } from "next/navigation";
-import AskQuestionCard from "./ask-question-card";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { MemoizedMarkdown } from "@/components/memoized-markdown";
-import { Code, Calendar } from "lucide-react";
-import CodeReferences from "@/components/code-references";
+"use client";
+
+import { useState } from "react";
+import { askQuestion } from "@/lib/retrival";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { getQuestions } from "./actions";
+import { motion } from "framer-motion";
+import Image from "next/image";
+import { readStreamableValue } from "ai/rsc";
+import CodeReferences from "@/components/code-references"; // New import
+import { MemoizedMarkdown } from "@/components/memorized-markdown"; // New import
+import { usePathname } from "next/navigation";
 
 interface FileReference {
   fileName: string;
   sourceCode: string;
   summary: string;
+  score?: number;
 }
 
-interface Question {
-  id: string;
-  question: string;
-  answer: string;
-  createdAt: Date;
-  user: {
-    imageUrls: string | null;
-    name: string;
+interface QAProps {
+  params: { id: string };
+}
+
+export default function QA() {
+  const path = usePathname();
+  console.log("QA page for project:", path);
+  const parts = path.split("/");
+  const projectId = parts[2];
+  console.log("projectId", projectId);
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
+  const [filesReferences, setFilesReferences] = useState<FileReference[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Mutation for saving answers
+  // const saveAnswer = useMutation({
+  //   mutationFn: async (data: { projectId: string; question: string; answer: string; filesReferences: FileReference[] }) => {
+  //     const response = await fetch("/api/save-answer", {
+  //       method: "POST",
+  //       body: JSON.stringify(data),
+  //       headers: { "Content-Type": "application/json" },
+  //     });
+  //     if (!response.ok) throw new Error("Failed to save answer");
+  //     return response.json();
+  //   },
+  // });
+
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    console.log("onSubmit" , question, projectId);
+    e.preventDefault();
+    setAnswer("");
+    setFilesReferences([]);
+    setIsLoading(true);
+    setOpen(true);
+
+    try {
+      const { output, filesReferences } = await askQuestion(question, projectId);
+      setFilesReferences(filesReferences);
+
+
+      let fullAnswer = "";
+      for await (const delta of readStreamableValue(output)) {
+        if (delta) {
+          fullAnswer += delta;
+          setAnswer(fullAnswer);
+        }
+      }
+    } catch (error) {
+      console.error("Error asking question:", error);
+      toast.error("Failed to get an answer. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
-  filesReferences: FileReference[];
-}
 
-interface QAPageProps {
-  params: { projectId: string };
-}
-
-export default async function QAPage({ params }: QAPageProps) {
-  const { projectId } = params;
-  const { data: questions, isLoading } = await getQuestions(projectId);
-
-  if (!projectId) {
-    notFound();
-  }
+  const handleSaveAnswer = () => {
+    // saveAnswer.mutate(
+    //   {
+    //     projectId: params.id,
+    //     question,
+    //     answer,
+    //     filesReferences,
+    //   },
+    //   {
+    //     onSuccess: () => {
+    //       toast.success("Answer saved successfully");
+    //       queryClient.invalidateQueries(["answers", params.id]);
+    //       setOpen(false);
+    //     },
+    //     onError: () => toast.error("Failed to save answer"),
+    //   }
+    // );
+    console.log("Saving answer...");
+    console.log("ans" , answer)
+  };
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
-      {/* Ask Question Card */}
-      <div className="max-w-2xl mx-auto">
-        <AskQuestionCard projectId={projectId} />
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-4xl mx-auto space-y-6"
+      >
+        {/* Ask Question Card */}
+        <Card className="shadow-lg border-none bg-white dark:bg-gray-800">
+          <CardHeader className="border-b">
+            <CardTitle className="flex items-center gap-2 text-2xl font-bold text-foreground">
+              <Image src="/logo4.png" alt="GitBuddy" width={40} height={40} />
+              Ask GitBuddy
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <form onSubmit={onSubmit} className="space-y-4">
+              <Textarea
+                placeholder="Which file should I edit to change the home page?"
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                className="min-h-[120px] text-base border-gray-300 dark:border-gray-700 focus:ring-2 focus:ring-primary resize-none"
+              />
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-primary hover:bg-primary/90 text-white font-semibold py-2 rounded-lg transition-all duration-200"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  "Ask GitBuddy!"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
-      {/* Saved Questions */}
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-6">Saved Questions</h1>
-        <Sheet>
-          <div className="space-y-4">
-            {isLoading ? (
-              Array.from({ length: 3 }).map((_, index) => (
-                <Skeleton key={index} className="h-24 w-full rounded-lg" />
-              ))
-            ) : !questions || questions.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-4">
-                No saved questions yet. Ask GitBuddy something to get started!
-              </p>
-            ) : (
-              questions.map((question) => (
-                <SheetTrigger asChild key={question.id}>
-                  <button
-                    className="w-full text-left"
-                    onClick={() =>
-                      // Use client-side state via data attribute or hydration
-                      document.documentElement.dataset.selectedQuestion = JSON.stringify(question)
-                    }
-                  >
-                    <div className="flex items-start gap-4 bg-white dark:bg-gray-900 rounded-lg p-4 shadow-md border border-gray-200 dark:border-gray-700 hover:border-primary hover:shadow-lg transition-all duration-200">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={question.user.imageUrls ?? ""} alt={question.user.name} />
-                        <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-                          {question.user.name.slice(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 space-y-1">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium text-gray-800 dark:text-gray-100 line-clamp-1">
-                            {question.question}
-                          </p>
-                          <div className="flex items-center text-gray-500 dark:text-gray-400 text-sm">
-                            <Calendar className="w-4 h-4 mr-1" />
-                            <span>{new Date(question.createdAt).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <p className="text-gray-600 dark:text-gray-300 line-clamp-2 text-sm">
-                          {question.answer}
-                        </p>
-                      </div>
-                    </div>
-                  </button>
-                </SheetTrigger>
-              ))
-            )}
-          </div>
-
-          {/* Client-side script to handle Sheet content */}
-          <script
-            dangerouslySetInnerHTML={{
-              __html: `
-                document.addEventListener('click', (e) => {
-                  const trigger = e.target.closest('[data-sheet-trigger]');
-                  if (trigger) {
-                    const sheet = document.querySelector('[data-sheet-content]');
-                    if (sheet) {
-                      sheet.style.display = 'block';
-                    }
-                  }
-                });
-              `,
-            }}
-          />
-          <SheetContent
-            data-sheet-content
-            className="sm:max-w-[80vw] bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 hidden"
-          >
-            <SheetHeader className="border-b border-gray-200 dark:border-gray-700 pb-4">
-              <SheetTitle className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-                <span id="sheet-title"></span>
-              </SheetTitle>
-            </SheetHeader>
-            <ScrollArea className="h-[calc(100vh-10rem)] mt-6 pr-4">
-              <div className="space-y-6">
-                <MemoizedMarkdown content="" id="sheet-answer" />
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-4" id="sheet-references">
-                  <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-100 mb-3 flex items-center">
-                    <Code className="w-5 h-5 mr-2" />
-                    Code References
-                  </h3>
-                  <div id="sheet-references-content"></div>
+        {/* Answer Dialog */}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogContent className="sm:max-w-[80vw] max-h-[90vh] bg-white dark:bg-gray-800 rounded-xl shadow-2xl flex flex-col">
+            <DialogHeader className="border-b pb-4">
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
+                <Image src="/logo4.png" alt="GitBuddy" width={32} height={32} />
+                GitBuddy Answer
+              </DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="flex-grow overflow-y-auto p-6">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="space-y-6"
+              >
+                {/* Answer Section */}
+                <div className="bg-muted p-4 rounded-lg shadow-inner">
+                  <MemoizedMarkdown content={answer} id="answer" />
                 </div>
-              </div>
+                {/* References Section */}
+                {filesReferences.length > 0 && (
+                  <div className="border-t pt-6">
+                    <h3 className="text-xl font-semibold text-foreground mb-4">Code References</h3>
+                    <CodeReferences filesReferences={filesReferences} />
+                  </div>
+                )}
+              </motion.div>
             </ScrollArea>
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `
-                  document.addEventListener('click', (e) => {
-                    const trigger = e.target.closest('[data-sheet-trigger]');
-                    if (trigger) {
-                      const selectedQuestion = JSON.parse(document.documentElement.dataset.selectedQuestion || '{}');
-                      if (selectedQuestion) {
-                        document.getElementById('sheet-title').textContent = selectedQuestion.question;
-                        document.getElementById('sheet-answer').innerHTML = selectedQuestion.answer;
-                        const references = selectedQuestion.filesReferences || [];
-                        const refContent = document.getElementById('sheet-references-content');
-                        refContent.innerHTML = references.length > 0 
-                          ? references.map(ref => 
-                              '<div class="space-y-2">' +
-                              '<p class="font-medium text-gray-800 dark:text-gray-100">' + ref.fileName + '</p>' +
-                              '<pre class="bg-gray-100 dark:bg-gray-800 p-2 rounded-md text-sm overflow-x-auto">' + ref.sourceCode + '</pre>' +
-                              '<p class="text-gray-600 dark:text-gray-300">' + ref.summary + '</p>' +
-                              '</div>'
-                            ).join('')
-                          : '<p class="text-gray-500 dark:text-gray-400">No references available.</p>';
-                        document.querySelector('[data-sheet-content]').style.display = 'block';
-                      }
-                    }
-                  });
-                `,
-              }}
-            />
-          </SheetContent>
-        </Sheet>
-      </div>
+            <div className="flex justify-between items-center p-4 border-t">
+              <Button
+                variant="outline"
+                onClick={handleSaveAnswer}
+                // disabled={saveAnswer.isPending || isLoading}
+                className="border-primary text-primary hover:bg-primary/10 transition-all duration-200"
+              >
+                {/* {saveAnswer.isPending ? "Saving..." : "Save Answer"} */}
+              </Button>
+              <Button
+                onClick={() => setOpen(false)}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white transition-all duration-200"
+              >
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </motion.div>
     </div>
   );
 }

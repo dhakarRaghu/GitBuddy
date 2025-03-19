@@ -185,12 +185,12 @@ export const aiSummariseCommit = async (diff: string): Promise<string> => {
   
       // // Word count check (target 150-200 words)
       const words = summary.split(/\s+/).length;
-      // if (words > 200) {
-      //   console.warn(`Summary for ${fileName} exceeds 200 words (${words}), truncating...`);
-      //   summary = summary.split(/\s+/).slice(0, 195).join(" ") + "...";
-      // } else if (words < 150) {
-      //   console.warn(`Summary for ${fileName} is under 150 words (${words}), may lack detail`);
-      // }
+      if (words > 200) {
+        console.warn(`Summary for ${fileName} exceeds 200 words (${words}), truncating...`);
+        summary = summary.split(/\s+/).slice(0, 195).join(" ") + "...";
+      } else if (words < 150) {
+        console.warn(`Summary for ${fileName} is under 150 words (${words}), may lack detail`);
+      }
   
       console.log(`Summary for ${fileName} (${words} words):`, summary);
       return summary;

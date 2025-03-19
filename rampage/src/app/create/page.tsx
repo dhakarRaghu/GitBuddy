@@ -53,7 +53,7 @@ const CreatePage = () => {
       toast.success(data.message);
       reset();
       refetch();
-      router.push(`${data.project.id}/dashboard`);
+      router.push(`project/${data.project.id}/dashboard`);
     },
     onError: (error) => {
       toast.error(`Failed to create project: ${(error as Error).message}`);

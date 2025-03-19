@@ -1,127 +1,202 @@
-// import { Document } from '@langchain/core/documents';
-//  // Your summarization function
-// import { uploadToPinecone } from "./pineconedb"; // Pinecone upload function
-// import { prisma } from "@/lib/db";
-// import { generateEmbedding, summariseCode } from './gemini';
-// import { loadGithubRepo } from './githubLoader';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { config } from './config';
 
-// // Configuration
-// const BATCH_SIZE = 10;
-// const MAX_RETRIES = 3;
-// const BASE_RETRY_DELAY_MS = 1000;
-// const DELAY_BETWEEN_BATCHES_MS = 1000;
+const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
 
-// export interface EmbeddingResult {
-//   summary: string;
-//   embedding: number[];
-//   sourceCode: string;
-//   fileName: string;
+const embeddingCache = new Map<string, number[]>();
+const MAX_PAYLOAD_SIZE = 9000;
+
+/**
+ * Truncates text to fit within the payload size limit.
+ */
+function truncateText(text: string, maxBytes: number): string {
+  const encoder = new TextEncoder();
+  const encoded = encoder.encode(text);
+  if (encoded.length <= maxBytes) return text;
+  const truncated = encoded.slice(0, maxBytes);
+  return new TextDecoder().decode(truncated).substring(0, Math.floor(maxBytes / 4));
+}
+
+/**
+ * Checks if a vector is all zeros.
+ */
+function isZeroVector(vector: number[]): boolean {
+  return vector.every(v => v === 0);
+}
+
+/**
+ * Generates an embedding with retries and truncation.
+ */
+export async function generateEmbedding(text: string, retries: number = 3, timeoutMs: number = 10000): Promise<number[]> {
+  const cached = embeddingCache.get(text);
+  if (cached) {
+    return cached;
+  }
+
+  const truncatedText = truncateText(text, MAX_PAYLOAD_SIZE);
+  if (truncatedText !== text) {
+    console.warn(`Truncated text from ${text.length} to ${truncatedText.length} characters for embedding`);
+  }
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Embedding timeout")), timeoutMs)
+      );
+      const embeddingPromise = model.embedContent(truncatedText).then(result => result.embedding.values);
+      const embedding = await Promise.race([embeddingPromise, timeoutPromise]);
+      if (isZeroVector(embedding)) {
+        throw new Error("API returned an all-zero vector");
+      }
+      embeddingCache.set(text, embedding);
+      return embedding;
+    } catch (error) {
+      if (attempt === retries) {
+
+        throw error; // Let caller handle the failure
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+    }
+  }
+  throw new Error("Unexpected exit from retry loop");
+}
+
+
+export async function generateEmbeddings(texts: string[], batchSize: number = 10): Promise<number[][]> {
+  const embeddings: number[][] = [];
+  for (let i = 0; i < texts.length; i += batchSize) {
+    const batch = texts.slice(i, i + batchSize);
+    const batchEmbeddings = await Promise.all(
+      batch.map(async text => {
+        try {
+          return await generateEmbedding(text);
+        } catch  {
+          return null; // Mark as failed
+        }
+      })
+    );
+    embeddings.push(...batchEmbeddings.filter((embedding): embedding is number[] => embedding !== null));
+  }
+  return embeddings;
+}
+
+// // embedding.ts
+// import { GoogleGenerativeAI } from '@google/generative-ai';
+// import dotenv from 'dotenv';
+// dotenv.config();
+
+// const googleai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY as string)
+//   .getGenerativeModel({ model: "text-embedding-004" });
+
+// export const MAX_PAYLOAD_BYTES = 9000;
+// export const OVERLAP_BYTES = 1000;
+// export const API_CALL_DELAY_MS = 0; // delay between API calls to avoid rate limiting
+
+// function splitLargeTextIntoOverlappingChunks(text: string, maxBytes: number, overlapBytes: number): string[] {
+//   const encoder = new TextEncoder();
+//   const encodedText = encoder.encode(text);
+//   if (encodedText.length <= maxBytes) {
+//     return [text];
+//   }
+//   const chunks: string[] = [];
+//   let start = 0;
+//   while (start < text.length) {
+//     let end = start;
+//     let currentChunk = "";
+//     while (end < text.length) {
+//       const tempChunk = text.substring(start, end + 1);
+//       const tempEncoded = encoder.encode(tempChunk);
+//       if (tempEncoded.length > maxBytes) {
+//         break;
+//       }
+//       currentChunk = tempChunk;
+//       end++;
+//     }
+//     if (currentChunk) {
+//       chunks.push(currentChunk);
+//     } else {
+//       break;
+//     }
+//     start = end - overlapBytes;
+//     if (start < 0) start = 0;
+//     if (end === start) break;
+//   }
+//   return chunks;
 // }
 
-// // In-memory cache for embeddings (persists across retries within a run)
-// const embeddingCache = new Map<string, EmbeddingResult>();
-
-// // Utility to delay execution
-// const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// function safeTextForEmbedding(text: string): string[] {
+//   const encoder = new TextEncoder();
+//   const encoded = encoder.encode(text);
+//   if (encoded.length <= MAX_PAYLOAD_BYTES) {
+//     return [text];
+//   } else {
+//     console.warn(`Text payload size (${encoded.length} bytes) exceeds limit. Splitting using overlapping sliding window.`);
+//     return splitLargeTextIntoOverlappingChunks(text, MAX_PAYLOAD_BYTES, OVERLAP_BYTES);
+//   }
+// }
 
 // /**
-//  * Generates embeddings for a repository, caching results and running in the background.
+//  * Generate embedding for a given text.
+//  * If the text is too long, it is split into overlapping chunks and each chunk is processed sequentially
+//  * with a delay between API calls. The final embedding is the average of the individual embeddings.
 //  */
-// export const RepoGenerateEmbeddings = (projectId: string, docs: Document[]): void => {
-//   // Fire-and-forget background execution
-//   (async () => {
+// export async function generateEmbedding(text: string): Promise<number[]> {
+//   const chunks = safeTextForEmbedding(text);
+//   if (chunks.length === 1) {
 //     try {
-//       await prisma.project.update({
-//         where: { id: projectId },
-//         data: { indexingStatus: "IN_PROGRESS" },
-//       });
-
-//       const embeddings: EmbeddingResult[] = [];
-
-//       for (let i = 0; i < docs.length; i += BATCH_SIZE) {
-//         const batch = docs.slice(i, i + BATCH_SIZE);
-//         console.log(`Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(docs.length / BATCH_SIZE)}`);
-
-//         const batchPromises = batch.map(async (doc) => {
-//           const cacheKey = `${projectId}_${doc.metadata.source}`;
-//           const cached = embeddingCache.get(cacheKey);
-//           if (cached) {
-//             console.log(`Using cached embedding for ${doc.metadata.source}`);
-//             return cached;
-//           }
-
-//           for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-//             try {
-//               const summary = await summariseCode(doc);
-//               const embedding = await generateEmbedding(summary);
-//               const result: EmbeddingResult = {
-//                 summary,
-//                 embedding,
-//                 sourceCode: doc.pageContent,
-//                 fileName: doc.metadata.source,
-//               };
-
-//               embeddingCache.set(cacheKey, result);
-//               return result;
-//             } catch (error: any) {
-//               if (error.response?.status === 429 || error.message.includes("rate limit")) {
-//                 if (attempt === MAX_RETRIES) {
-//                   console.error(
-//                     `Failed embedding ${doc.metadata.source} after ${MAX_RETRIES} attempts:`,
-//                     error
-//                   );
-//                   return null;
-//                 }
-//                 const retryDelay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
-//                 console.warn(
-//                   `Rate limit hit for ${doc.metadata.source}. Retrying (${attempt}/${MAX_RETRIES}) after ${retryDelay}ms`
-//                 );
-//                 await delay(retryDelay);
-//               } else {
-//                 console.error(`Error embedding ${doc.metadata.source}:`, error);
-//                 return null;
-//               }
-//             }
-//           }
-//           return null; // Shouldn’t reach here due to retry loop
-//         });
-
-//         const batchResults = await Promise.all(batchPromises);
-//         embeddings.push(...batchResults.filter((item): item is EmbeddingResult => item !== null));
-
-//         if (i + BATCH_SIZE < docs.length) {
-//           console.log(`Waiting ${DELAY_BETWEEN_BATCHES_MS}ms before next batch...`);
-//           await delay(DELAY_BETWEEN_BATCHES_MS);
+//       const result = await googleai.embedContent(chunks[0]);
+//       return result.embedding.values;
+//     } catch (error) {
+//       console.error("Error generating embedding:", error);
+//       throw error;
+//     }
+//   } else {
+//     try {
+//       // Process each chunk sequentially with a delay to avoid rate limiting.
+//       const embeddings: number[][] = [];
+//       for (const chunk of chunks) {
+//         const result = await googleai.embedContent(chunk);
+//         embeddings.push(result.embedding.values);
+//         // Wait before processing the next chunk.
+//         await new Promise(resolve => setTimeout(resolve, API_CALL_DELAY_MS));
+//       }
+//       // Average the embeddings.
+//       const dims = embeddings[0].length;
+//       const avgEmbedding = new Array(dims).fill(0);
+//       for (const emb of embeddings) {
+//         for (let i = 0; i < dims; i++) {
+//           avgEmbedding[i] += emb[i];
 //         }
 //       }
-
-//       // Store embeddings in Pinecone
-//       const vectors = embeddings.map((e) => ({
-//         id: `${projectId}_${e.fileName.replace(/[^a-zA-Z0-9-_]/g, "_")}`,
-//         values: e.embedding,
-//         metadata: { fileName: e.fileName, sourceCode: e.sourceCode, summary: e.summary, projectId },
-//       }));
-//       await uploadToPinecone(vectors, projectId);
-
-//       console.log(`Embeddings generated for project ${projectId}: ${embeddings.length}`);
-//       await prisma.project.update({
-//         where: { id: projectId },
-//         data: { indexingStatus: "COMPLETED" },
-//       });
+//       for (let i = 0; i < dims; i++) {
+//         avgEmbedding[i] /= embeddings.length;
+//       }
+//       return avgEmbedding;
 //     } catch (error) {
-//       console.error(`Embedding process failed for project ${projectId}:`, error);
-//       await prisma.project.update({
-//         where: { id: projectId },
-//         data: { indexingStatus: "FAILED" },
-//       });
+//       console.error("Error generating embeddings for overlapping chunks:", error);
+//       throw error;
 //     }
-//   })(); // Runs in background
-// };
+//   }
+// }
 
 // /**
-//  * Wrapper to initiate embedding process for a project
+//  * Generate embeddings for an array of texts in batches.
+//  * A delay is added between batches to manage rate limits.
 //  */
-// export const startEmbeddingProcess = async (projectId: string, githubUrl: string) => {
-//   const docs = await loadGithubRepo(githubUrl, process.env.GITHUB_TOKEN);
-//   RepoGenerateEmbeddings(projectId, docs);
-// };
+// export async function generateEmbeddings(texts: string[], batchSize: number = 3): Promise<number[][]> {
+//   const embeddings: number[][] = [];
+//   for (let i = 0; i < texts.length; i += batchSize) {
+//     const batch = texts.slice(i, i + batchSize);
+//     const batchResults = [];
+//     // Process each text in the batch sequentially (to be safe), or adjust if parallel processing is acceptable.
+//     for (const text of batch) {
+//       const emb = await generateEmbedding(text);
+//       batchResults.push(emb);
+//     }
+//     embeddings.push(...batchResults);
+//     // Delay between batches.
+//     await new Promise(resolve => setTimeout(resolve, API_CALL_DELAY_MS));
+//   }
+//   return embeddings;
+// }

@@ -8,7 +8,7 @@ import { ExternalLink, GitCommit } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDistanceToNow } from "date-fns";
-import { MemoizedMarkdown } from "@/components/memoized-markdown"; // Your markdown component
+import { MemoizedMarkdown } from "@/components/memorized-markdown"; // Your markdown component
 import { pollCommits } from "@/lib/github"; // Assuming this fetches and saves commits
 import { getCommit } from "@/lib/query";
 
