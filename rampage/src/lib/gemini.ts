@@ -112,48 +112,145 @@ export const aiSummariseCommit = async (diff: string): Promise<string> => {
 //     }
 //   };
 
-  export async function generateEmbedding(summary: string) {
-    // console.log("Generating embedding for \n", summary);
+  // export async function generateEmbedding(summary: string) {
+  //   // console.log("Generating embedding for \n", summary);
+  //   try {
+  //     const model = genAI.getGenerativeModel({
+  //       model: "text-embedding-004",
+  //     });
+  
+  //     const result = await model.embedContent(summary);
+  //     const embedding = result.embedding;
+  //     return embedding.values;
+  //   } catch (error) {
+  //     console.error("Error in generateEmbedding:", error);
+  
+  //     // Handle rate limit or other errors
+  //     if ((error as any)?.response?.status === 403 || (error as any)?.response?.status === 429) {
+  //       console.log("API rate limit reached. Returning partial embeddings.");
+  //       return []; // Return empty array to signify partial embeddings
+  //     }
+  //     throw error; // Rethrow the error if not rate limit related
+  //   }
+  // }
+
+  export async function summariseCode(doc: Document): Promise<string> {
+    const fileName = doc.metadata.source || "unknown file";
+    console.log(`Generating summary for ${fileName}`);
+  
+    const MAX_CODE_SIZE = 10000; // Increased to 15k characters (approx. 3k-4k tokens, well within Gemini 1.5 Flash limits)
+    const code = doc.pageContent.slice(0, MAX_CODE_SIZE);
+    if (!code.trim()) {
+      console.warn(`Empty code content for ${fileName}`);
+      return `The file ${fileName} is empty or contains no meaningful content.`;
+    }
+    if (doc.pageContent.length > MAX_CODE_SIZE) {
+      console.warn(`Code for ${fileName} truncated from ${doc.pageContent.length} to ${MAX_CODE_SIZE} characters`);
+    }
+  
     try {
-      const model = genAI.getGenerativeModel({
-        model: "text-embedding-004",
-      });
+      const prompt = `
+        You are an expert senior software engineer onboarding a junior engineer to a project while also preparing detailed summaries for an AI system to generate embeddings. Your task is to summarize the purpose, key functionality, and role of the file "${fileName}" in a way that:
+        Your task is to analyze the file "${fileName}" and provide a structured and informative summary that serves two key purposes:
+        1. **Onboarding** - Make it clear and easy for a junior engineer to understand the purpose and functionality of the file.
+        2. **AI Embedding** - Include enough detail and structure to enable accurate retrieval when answering technical questions.
+
+        ### Provide a detailed summary that includes:
+        - **Purpose**: Explain the file's role within the project and why it's important.
+        - **Key Components**: Identify major functions, classes, variables, or logic blocks and describe their responsibilities.
+        - **Interaction**: Explain how these components interact with each other and with other files or systems (e.g., APIs, modules, UI).
+        - **Patterns & Dependencies**: Highlight any notable patterns, dependencies, or external libraries used.
+        - **Actionability**: Provide enough insight to answer common developer questions like:
+            - "Which file handles X?"
+            - "Where is Y defined?"
+            - "How does Z work?"
   
-      const result = await model.embedContent(summary);
-      const embedding = result.embedding;
-      return embedding.values;
+        Here is the code:
+        \`\`\`
+        ${code}
+        \`\`\`
+  
+        Provide a summary in plain English that:
+        - Describes what the file does and why it matters in the project.
+        - Lists key functions, classes, or logic blocks and their purposes.
+        - Notes any connections to other files or systems (if inferable).
+        - Ensures enough context for embeddings to match user queries effectively.
+        - Provide enough detail for a junior engineer to understand the file's role.
+
+        # DO NOT INCLUDE UNNECESSARY COMMENTS OR METADATA IN THE SUMMARY.
+      `;
+  
+      const response = await model.generateContent([prompt]);
+      let summary = response.response.text().trim();
+  
+      // // Word count check (target 150-200 words)
+      const words = summary.split(/\s+/).length;
+      // if (words > 200) {
+      //   console.warn(`Summary for ${fileName} exceeds 200 words (${words}), truncating...`);
+      //   summary = summary.split(/\s+/).slice(0, 195).join(" ") + "...";
+      // } else if (words < 150) {
+      //   console.warn(`Summary for ${fileName} is under 150 words (${words}), may lack detail`);
+      // }
+  
+      console.log(`Summary for ${fileName} (${words} words):`, summary);
+      return summary;
     } catch (error) {
-      console.error("Error in generateEmbedding:", error);
-  
-      // Handle rate limit or other errors
-      if ((error as any)?.response?.status === 403 || (error as any)?.response?.status === 429) {
-        console.log("API rate limit reached. Returning partial embeddings.");
-        return []; // Return empty array to signify partial embeddings
-      }
-      throw error; // Rethrow the error if not rate limit related
+      console.error(`Error summarizing ${fileName}:`, error);
+      return `The file ${fileName} could not be summarized due to an error. It contains code that may define functions, classes, or logic, but specific details are unavailable. Check the file manually for its role in the project.`;
     }
   }
 
 
-export async function summariseCode(doc: Document) {
-    // console.log("Getting summary for\n", doc.metadata.source);
-    const canSummarise = []
-    try {
-        const code = doc.pageContent.slice(0, 5000); // Limit to 10000 characters
-        const response = await model.generateContent([
-            `You are an intelligent senior software engineer specializing in onboarding junior software engineers onto projects.
-            You are onboarding a junior software engineer and explaining the purpose of the ${doc.metadata.source} file.
-            Here is the code:
-            ${code}
-            Give a summary no more than 100 words of the code above.`,
-        ]);
-        // console.log("Summary response:", response.response.text());
-        canSummarise.push(response.response.text());
-        return response.response.text();
-    } catch (error) {
-        console.error("n\Error in summariseCode:", error);
-        return '';
-        // throw error;
-    }
+
+const embeddingCache = new Map<string, number[]>();
+const MAX_PAYLOAD_SIZE = 9500;
+
+/**
+ * Truncates text to fit within the payload size limit.
+ */
+function truncateText(text: string, maxBytes: number): string {
+  const encoder = new TextEncoder();
+  const encoded = encoder.encode(text);
+  if (encoded.length <= maxBytes) return text;
+  const truncated = encoded.slice(0, maxBytes);
+  return new TextDecoder().decode(truncated).substring(0, Math.floor(maxBytes / 4));
 }
 
+function isZeroVector(vector: number[]): boolean {
+  return vector.every(v => v === 0);
+}
+
+
+export async function generateEmbedding(text: string, retries: number = 3, timeoutMs: number = 10000): Promise<number[]> {
+  const cached = embeddingCache.get(text);
+  if (cached) {
+    return cached;
+  }
+
+  const truncatedText = truncateText(text, MAX_PAYLOAD_SIZE);
+  if (truncatedText !== text) {
+    console.warn(`Truncated text from ${text.length} to ${truncatedText.length} characters for embedding`);
+  }
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Embedding timeout")), timeoutMs)
+      );
+      const embeddingPromise = model.embedContent(truncatedText).then(result => result.embedding.values);
+      const embedding = await Promise.race([embeddingPromise, timeoutPromise]);
+      if (isZeroVector(embedding)) {
+        throw new Error("API returned an all-zero vector");
+      }
+      embeddingCache.set(text, embedding);
+      return embedding;
+    } catch (error) {
+      if (attempt === retries) {
+
+        throw error; // Let caller handle the failure
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+    }
+  }
+  throw new Error("Unexpected exit from retry loop");
+}

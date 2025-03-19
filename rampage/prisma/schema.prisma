@@ -62,7 +62,7 @@ model Project {
   name        String
   githubUrl   String?   
   deletedAt   DateTime?
-
+  indexingStatus String    @default("PENDING")
   commits     Commit[]
   users       UserToProject[] 
   questions   Question[]      

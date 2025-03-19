@@ -3,10 +3,14 @@
 import { prisma } from "./db";
 import { getAuthSession } from "./auth";
 import { checkCreditsAndStructure } from "./githubLoader";
+import { initializeProjectEmbeddings } from "@/app/project/[projectId]/qa/actions";
+import { redirect } from "next/navigation";
+
 
 export async function CreateProject(githubUrl: string, name: string) {
   const session = await getAuthSession();
   const userId = session?.user?.id;
+  if(!session) redirect("/login");
 
   if (!userId) throw new Error("Unauthorized");
 
@@ -24,7 +28,8 @@ export async function CreateProject(githubUrl: string, name: string) {
         githubUrl,
       },
     });
-
+    
+    await initializeProjectEmbeddings(project.id , githubUrl);
     // Associate with user
     await prisma.userToProject.create({
       data: {

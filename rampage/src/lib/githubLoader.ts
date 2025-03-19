@@ -1,10 +1,41 @@
 "use server";
-
+import { GithubRepoLoader } from '@langchain/community/document_loaders/web/github';
 import { Octokit } from "octokit";
 import { prisma } from "./db";
 import { getAuthSession } from "./auth";
+import { Document } from '@langchain/core/documents';
+import { generateEmbedding, summariseCode } from './gemini';
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+// // Fetch files from the repository
+// async function fetchRepoFiles(githubUrl: string): Promise<{ fileName: string; sourceCode: string; summary: string }[]> {
+//   const [owner, repo] = githubUrl.split("/").slice(-2);
+//   const commitsResponse = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits`, {
+//     headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` },
+//     params: { per_page: 10 },
+//   });
+
+//   const files = [];
+//   for (const commit of commitsResponse.data) {
+//     const diff = await axios
+//       .get(`${githubUrl}/commit/${commit.sha}.diff`, {
+//         headers: {
+//           Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+//           Accept: "application/vnd.github.v3.diff",
+//         },
+//       })
+//       .then((res) => res.data)
+//       .catch(() => "");
+
+//     files.push({
+//       fileName: `commit_${commit.sha}`,
+//       sourceCode: diff,
+//       summary: commit.commit.message,
+//     });
+//   }
+//   return files;
+// }
 
 // Parse GitHub URL to extract owner and repo
 async function RepoDetails(githubUrl: string) {
@@ -90,3 +121,116 @@ export async function checkCreditsAndStructure(githubUrl: string) {
     userCredits: user?.credits || 0,
   };
 }
+
+
+export const loadGithubRepo = async (githubUrl: string, githubToken?: string) => {
+  const loader = new GithubRepoLoader(githubUrl,{
+      accessToken: githubToken || '', 
+      branch: 'main',
+      ignoreFiles: ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb' , '.next' , 'node_modules' , 'dist'
+      , 'build' , 'out' , 'public' , 'coverage' , 'cypress' , 'tmp' , 'temp' , 'logs' , 'logs' , 'log','images' , '.DS_Store'
+      ],
+      recursive: true,
+      unknown:'warn',
+      maxConcurrency: 5
+  });
+  const docs = await loader.load();
+  // console.log("docs", docs);
+
+  // docs.map((doc) => {
+  //   console.log("metadata kjnkj", doc.metadata);
+  //   console.log("metadata", doc.metadata.sourceCodeEmbedding);
+  //   // console.log(`${doc.metadata.sourceCodeEmbedding}`, doc);
+  // });
+
+  return docs;
+};
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Configuration for rate limiting
+const BATCH_SIZE = 10; // Adjust based on API limits (e.g., 10 requests per batch)
+const DELAY_BETWEEN_BATCHES_MS = 1000; // 1 second delay between batches
+const MAX_RETRIES = 3; // Number of retry attempts for rate limit errors
+const BASE_RETRY_DELAY_MS = 1000; // Base delay for retries
+
+export interface EmbeddingResult {
+  summary: string;
+  embedding: number[];
+  sourceCode: string;
+  fileName: string;
+}
+
+export const RepoGenerateEmbeddings = async (docs: Document[]): Promise<EmbeddingResult[]> => {
+  const embeddings: EmbeddingResult[] = [];
+  // In-memory cache scoped to this function call
+  const embeddingCache = new Map<string, EmbeddingResult>();
+
+  // Process documents in batches
+  for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+    const batch = docs.slice(i, i + BATCH_SIZE);
+    console.log(`Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(docs.length / BATCH_SIZE)}`);
+
+    const batchPromises = batch.map(async (doc) => {
+      const cacheKey = doc.metadata.source || "unknown_file";
+      
+      // Check if already embedded
+      const cachedResult = embeddingCache.get(cacheKey);
+      if (cachedResult) {
+        console.log(`Using cached embedding for ${cacheKey}`);
+        return cachedResult;
+      }
+
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const summary = await summariseCode(doc);
+          const embedding = await generateEmbedding(summary);
+          const result: EmbeddingResult = {
+            summary,
+            embedding,
+            sourceCode: doc.pageContent,
+            fileName: doc.metadata.source,
+          };
+
+          // Cache the result after successful embedding
+          embeddingCache.set(cacheKey, result);
+          return result;
+        } catch (error: any) {
+          // Handle rate limit errors
+          if (error.response?.status === 429 || error.message.includes("rate limit")) {
+            if (attempt === MAX_RETRIES) {
+              console.error(
+                `Failed to generate embedding for ${doc.metadata.source} after ${MAX_RETRIES} attempts:`,
+                error
+              );
+              return null;
+            }
+            const retryDelay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff
+            console.warn(
+              `Rate limit hit for ${doc.metadata.source}. Retrying (${attempt}/${MAX_RETRIES}) after ${retryDelay}ms...`
+            );
+            await delay(retryDelay);
+          } else {
+            // Non-rate-limit error, fail immediately
+            console.error(`Error generating embedding for ${doc.metadata.source}:`, error);
+            return null;
+          }
+        }
+      }
+      return null; // Fallback (shouldn’t reach here)
+    });
+
+    // Wait for the current batch to complete
+    const batchResults = await Promise.all(batchPromises);
+    embeddings.push(...batchResults.filter((item): item is EmbeddingResult => item !== null));
+
+    // Delay before the next batch (skip delay on the last batch)
+    if (i + BATCH_SIZE < docs.length) {
+      console.log(`Waiting ${DELAY_BETWEEN_BATCHES_MS}ms before next batch...`);
+      await delay(DELAY_BETWEEN_BATCHES_MS);
+    }
+  }
+
+  console.log("Embeddings generated:", embeddings.length);
+  return embeddings;
+};

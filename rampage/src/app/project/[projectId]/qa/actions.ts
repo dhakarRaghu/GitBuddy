@@ -7,6 +7,7 @@ import { Pinecone } from "@pinecone-database/pinecone";
 import { generateEmbedding } from "@/lib/gemini";
 import { prisma } from "@/lib/db";
 import axios from "axios";
+import { loadGithubRepo } from "@/lib/githubLoader";
 
 const google = createGoogleGenerativeAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -17,62 +18,38 @@ const pinecone = new Pinecone({
 });
 const index = pinecone.index("gitbuddy");
 
-async function fetchRepoFiles(githubUrl: string): Promise<{ fileName: string; sourceCode: string; summary: string }[]> {
-  const [owner, repo] = githubUrl.split("/").slice(-2);
-  const commitsResponse = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits`, {
-    headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` },
-    params: { per_page: 10 },
-  });
 
-  const files = [];
-  for (const commit of commitsResponse.data) {
-    const diff = await axios
-      .get(`${githubUrl}/commit/${commit.sha}.diff`, {
-        headers: {
-          Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-          Accept: "application/vnd.github.v3.diff",
-        },
-      })
-      .then((res) => res.data)
-      .catch(() => "");
 
-    files.push({
-      fileName: `commit_${commit.sha}`,
-      sourceCode: diff,
-      summary: commit.commit.message,
-    });
-  }
-  return files;
-}
-
-async function initializeProjectEmbeddings(projectId: string, githubUrl: string) {
-  const existingVectors = await index.namespace(projectId).fetch(["metadata"]);
-  if (existingVectors.records && Object.keys(existingVectors.records).length > 0) {
-    console.log(`Embeddings already exist for project ${projectId}`);
-    return;
-  }
+export async function initializeProjectEmbeddings(projectId: string, githubUrl: string) {
+  // const existingVectors = await index.namespace(projectId).fetch(["metadata"]);
+  // if (existingVectors.records && Object.keys(existingVectors.records).length > 0) {
+  //   console.log(`Embeddings already exist for project ${projectId}`);
+  //   return;
+  // }
 
   console.log(`Initializing embeddings for project ${projectId}`);
-  const files = await fetchRepoFiles(githubUrl);
+  // const files = await fetchRepoFiles(githubUrl);
+  const files = await loadGithubRepo(githubUrl);
+  // console.log(`Fetched ${files.length} files from repository` , files);
 
-  const vectors = await Promise.all(
-    files.map(async (file, idx) => {
-      const embedding = await generateEmbedding(file.summary);
-      return {
-        id: `${projectId}_${idx}`,
-        values: embedding,
-        metadata: {
-          fileName: file.fileName,
-          sourceCode: file.sourceCode,
-          summary: file.summary,
-          projectId,
-        },
-      };
-    })
-  );
+  // const vectors = await Promise.all(
+  //   files.map(async (file, idx) => {
+  //     const embedding = await generateEmbedding(file.summary);
+  //     return {
+  //       id: `${projectId}_${idx}`,
+  //       values: embedding,
+  //       metadata: {
+  //         fileName: file.fileName,
+  //         sourceCode: file.sourceCode,
+  //         summary: file.summary,
+  //         projectId,
+  //       },
+  //     };
+  //   })
+  // );
 
-  await index.namespace(projectId).upsert(vectors);
-  console.log(`Upserted ${vectors.length} embeddings for project ${projectId}`);
+  // await index.namespace(projectId).upsert(vectors);
+  // console.log(`Upserted ${vectors.length} embeddings for project ${projectId}`);
 }
 
 export async function askQuestion(question: string, projectId: string) {
@@ -127,7 +104,7 @@ export async function askQuestion(question: string, projectId: string) {
         END OF QUESTION
 
         Use the CONTEXT BLOCK to provide detailed, actionable answers about the codebase.
-        If the context lacks sufficient information, say: "I don’t have enough data from the repository to answer this fully. Try asking something more specific or check the repo directly."
+        If the context lacks sufficient information, say: "I don't have enough data from the repository to answer this fully. Try asking something more specific or check the repo directly."
         Do not invent information beyond the context.
       `,
     });
