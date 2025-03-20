@@ -2,8 +2,7 @@
 
 import { prisma } from "./db";
 import { getAuthSession } from "./auth";
-import { checkCreditsAndStructure } from "./githubLoader";
-// import { initializeProjectEmbeddings } from "@/app/project/[projectId]/qa/actions";
+import { checkCreditsAndStructure, RepoGenerateEmbeddings } from "./githubLoader";
 import { redirect } from "next/navigation";
 
 
@@ -40,7 +39,7 @@ export async function CreateProject(githubUrl: string, name: string) {
       where: { id: userId },
       data: { credits: { decrement: fileCount } },
     });
-
+    await RepoGenerateEmbeddings(project.id);
     return { project, message: "Project created successfully" };
   } catch (error) {
     console.error("Error creating project:", error);
@@ -92,4 +91,33 @@ export async function getCommit(projectId:string) {
     await prisma.$disconnect();
   }
   
+}
+
+export async function GetProjectById(projectId: string) {
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    include: {
+      users: {
+        include: {
+          user: true,
+        },
+      },
+    },
+  });
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  return project;
+}
+
+export async function getCommits(projectId: string) {
+  const commits = await prisma.commit.findMany({
+    where: { projectId },
+    orderBy: { commitDate: "desc" },
+    take: 10,
+  });
+
+  return commits;
 }

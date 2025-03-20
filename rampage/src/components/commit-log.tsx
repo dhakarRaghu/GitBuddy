@@ -1,3 +1,4 @@
+// components/commit-log.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -11,25 +12,32 @@ import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
 import { MemoizedMarkdown } from "@/components/memorized-markdown";
 import { pollCommits } from "@/lib/github";
-import { getCommit } from "@/lib/query";
+import { getCommits } from "@/lib/query";
 
-const getCommits = async ({ projectId}: { projectId: string}) => {
-  await pollCommits(projectId); // Poll only if forced or on initial load
-  return await getCommit(projectId); // Fetch from DB
+const fetchCommits = async ({ projectId }: { projectId: string }) => {
+  await pollCommits(projectId);
+  return await getCommits(projectId);
 };
 
-const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl?: string }) => {
+const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl: string }) => {
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: commits, isLoading, isError, refetch } = useQuery({
     queryKey: ["commits", projectId],
-    queryFn: () => getCommits({ projectId}),
-    // Cache configuration
-    staleTime: 30 * 60 * 1000, // 30 minutes - data is considered fresh for this duration
-    // cacheTime: 60 * 60 * 1000, // 1 hour - data stays in cache for this duration after last use
-    refetchOnWindowFocus: false, // Prevent refetching when window regains focus
-    refetchOnMount: false, // Prevent refetching on component mount if data is in cache
-    // keepPreviousData: true, // Keep showing previous data while fetching new data
+    queryFn: () => fetchCommits({ projectId }),
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (isLoading) return <CommitLogSkeleton />;
   if (isError) return <CommitLogError />;
@@ -39,10 +47,10 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl?: st
     <div className="rounded-lg bg-white dark:bg-gray-900 p-6 shadow-lg border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Commit History</h2>
-        {/* <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing || isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
           Refresh
-        </Button> */}
+        </Button>
       </div>
       <ul className="space-y-6" aria-label="Commit history">
         {commits.map((commit: any, commitIdx: number) => (
@@ -84,7 +92,7 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl?: st
                 {commit.commitMessage}
               </h3>
               {commit.summary && (
-                <div className="mt-2">
+                <div className="mt-2 prose dark:prose-invert max-w-none">
                   <MemoizedMarkdown content={commit.summary} id={commit.id} />
                 </div>
               )}
@@ -101,6 +109,7 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl?: st
     </div>
   );
 };
+
 const CommitLogSkeleton = () => (
   <div className="rounded-lg bg-white dark:bg-gray-900 p-6 shadow-lg border border-gray-200 dark:border-gray-700">
     <Skeleton className="h-6 w-1/4 mb-4" />

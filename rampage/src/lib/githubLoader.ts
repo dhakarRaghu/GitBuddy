@@ -7,8 +7,8 @@ import { Document } from '@langchain/core/documents';
 import {  summariseCode } from './gemini';
 import { uploadToPinecone } from './pineconedb';
 import { PineconeRecord } from '@pinecone-database/pinecone';
-import { generateEmbedding, generateEmbeddings } from './repoEmbedding';
-import { toast } from 'sonner';
+import { generateEmbedding } from './repoEmbedding';
+
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
@@ -96,6 +96,41 @@ async function getFileCount(
   return fileCount;
 }
 
+
+
+interface UserRepo {
+  name: string;
+  fullName: string;
+  description: string | null;
+  private: boolean;
+}
+export const fetchUserRepos = async (username: string): Promise<UserRepo[]> => {
+  try {
+    console.log(`Fetching repositories for user: ${username}`);
+
+    // Use Octokit to fetch the user's repositories
+    const response = await octokit.rest.repos.listForUser({
+      username,
+      per_page: 100, // Maximum number of repos per page
+      sort: 'updated', // Sort by last updated
+    });
+
+    // Map the response to a simpler format
+    const repos: UserRepo[] = response.data.map(repo => ({
+      name: repo.name,
+      fullName: repo.full_name,
+      description: repo.description,
+      private: repo.private,
+    }));
+
+    console.log(`Found ${repos.length} repositories for user ${username}`);
+    return repos;
+  } catch (error) {
+    console.error(`Error fetching repositories for user ${username}:`, error);
+    throw new Error(`Failed to fetch repositories for ${username}: ${(error as Error).message}`);
+  }
+};
+
 // Main function to check credits without file structure
 export async function checkCreditsAndStructure(githubUrl: string) {
   const session = await getAuthSession();
@@ -110,7 +145,7 @@ export async function checkCreditsAndStructure(githubUrl: string) {
 
   // Fetch file count only
   const fileCount = await getFileCount("", octokit, owner, repo);
-
+// console.log
   // Fetch user's remaining credits
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -184,7 +219,7 @@ export const loadGithubRepo = async (githubUrl: string) => {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Configuration for rate limiting and processing
-const BATCH_SIZE = 5; // Adjust based on API limits
+const BATCH_SIZE = 4; // Adjust based on API limits
 const DELAY_BETWEEN_BATCHES_MS = 1000; // 1 second delay between batches
 const MAX_RETRIES = 3; // Number of retry attempts for rate limit errors
 const BASE_RETRY_DELAY_MS = 1000; // Base delay for retries
@@ -216,14 +251,15 @@ export const RepoGenerateEmbeddings = async (
   const docs = await loadGithubRepo(project.githubUrl!);
   const embeddingCache = new Map<string, EmbeddingResult>();
 
-  // Process documents in batches
   if (!docs) {
     throw new Error("Failed to load documents from the repository.");
   }
+
   for (let i = 0; i < docs.length; i += BATCH_SIZE) {
     const batch = docs.slice(i, i + BATCH_SIZE);
     console.log(`Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(docs.length / BATCH_SIZE)}`);
-    // toast.success(`Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(docs.length / BATCH_SIZE)}`);
+
+
     const batchPromises = batch.map(async (doc) => {
       const cacheKey = doc.metadata.source || "unknown_file";
 
