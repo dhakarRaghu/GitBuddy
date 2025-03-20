@@ -77,6 +77,7 @@ import { cn } from "@/lib/utils";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { motion } from "framer-motion";
+import { MemoizedMarkdown } from "./memorized-markdown";
 
 interface FileReference {
   fileName: string;
@@ -121,8 +122,6 @@ const CodeReferences: React.FC<CodeReferencesProps> = ({ filesReferences }) => {
         </ScrollArea>
         {filesReferences.map((file) => (
           <TabsContent key={file.fileName} value={file.fileName} className="p-4">
-            <h3 className="text-lg font-semibold text-foreground mb-2">Summary</h3>
-            <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{file.summary}</p>
             <h3 className="text-lg font-semibold text-foreground mb-2">Source Code</h3>
             <ScrollArea className="w-full rounded-md border bg-gray-900 max-h-[300px]">
               <SyntaxHighlighter
@@ -137,6 +136,10 @@ const CodeReferences: React.FC<CodeReferencesProps> = ({ filesReferences }) => {
               >
                 {file.sourceCode}
               </SyntaxHighlighter>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Summary</h3>
+                {/* <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{file.summary}</p> */}
+    
+                 <MemoizedMarkdown content={file.summary} id={file.fileName} />
             </ScrollArea>
           </TabsContent>
         ))}

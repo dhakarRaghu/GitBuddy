@@ -122,10 +122,169 @@ console.log("normalizedResults", normalizedResults);
 /**
  * Enhanced askQuestion function with Pinecone retrieval
  */
-export async function askQuestion(question: string, projectId: string) {
-    console.log("Asking question:", question);
-    console.log("For project:", projectId);
+// export async function askQuestion(question: string, projectId: string) {
+//     console.log("Asking question:", question);
+//     console.log("For project:", projectId);
     
+//   const stream = createStreamableValue();
+
+//   // Check project status
+//   const project = await prisma.project.findUnique({
+//     where: { id: projectId },
+//     select: { githubUrl: true, indexingStatus: true },
+//   });
+
+//   if (!project?.githubUrl) {
+//     stream.update("Error: Project has no GitHub URL.");
+//     stream.done();
+//     return { output: stream.value, filesReferences: [] };
+//   }
+
+//   if (project.indexingStatus !== "COMPLETED") {
+//     await RepoGenerateEmbeddings(projectId);
+//   }
+
+//   // if (project.indexingStatus !== "COMPLETED") {
+//   //   stream.update("Error: Project indexing is not yet complete. Please wait.");
+//   //   stream.done();
+//   //   return { output: stream.value, filesReferences: [] };
+//   // }
+
+//   // Retrieve vector results
+//   let filesReferences: SearchResult[];
+//   try {
+//     filesReferences = await retrieveVectorResults(question, projectId);
+//   } catch (error) {
+//     console.error(`Error retrieving vector results for project ${projectId}:`, error);
+//     stream.update("Unable to retrieve relevant files due to an error.");
+//     stream.done();
+//     return { output: stream.value, filesReferences: [] };
+//   }
+//   console.log("filesReferences", filesReferences);
+  
+//   if (filesReferences.length === 0) {
+//     stream.update("No relevant information found in the repository.");
+//     stream.done();
+//     return { output: stream.value, filesReferences: [] };
+//   }
+
+//   // Build context
+//   let context = "";
+//   for (const doc of filesReferences) {
+//     context += `
+//       File: ${doc.fileName}
+//       Summary: ${doc.summary}
+//       Code Content:
+//       \`\`\`
+//       ${doc.sourceCode.slice(0, 2000)}
+//       \`\`\`
+//       \n\n`;
+//   }
+
+//   // Stream answer
+
+
+//   (async () => {
+//     try {
+//       const { textStream } = await streamText({
+//         model: google('gemini-1.5-flash'),
+//         prompt: `
+//         You are **GitBuddy**, an intelligent AI assistant designed to help technical interns understand and navigate GitHub repositories. Your task is to transform raw repository data—such as file names, source code, and summaries—into a **well-organized, professional-quality summary** in **Markdown format**. The goal is to present the content in a clear, structured, and engaging manner, making it easy for interns to grasp key details and use the information effectively.
+
+//             ---
+
+//             ## ✅ **Guidelines for Summarization**
+//             Follow these detailed instructions to ensure the summary is polished and intern-friendly:
+
+//             ### 1. **Markdown Formatting**
+//             - Use appropriate **headings** (\`#\`, \`##\`, \`###\`) to organize content logically and enhance readability.
+//             - Present information using **bullet points** and **numbered lists** for clarity and structure.
+//             - For code snippets or file references, use **code blocks** (\`\`\`language) with the appropriate language (e.g., \`typescript\`, \`javascript\`).
+//             - Apply **bold** or *italic* text for emphasis where needed to highlight key points.
+
+//             ---
+
+//             ### 2. **Summarization Style**
+//             - Be **concise** yet **comprehensive**—capture essential details while simplifying complex code or concepts.
+//             - Use a **friendly, approachable tone** with a professional edge, suitable for technical interns.
+//             - Eliminate redundant or irrelevant code/comments without losing critical functionality or intent.
+//             - Ensure the summary is easy to follow, with a logical flow tailored to beginners.
+
+//             ---
+
+//             ### 3. **Enhancement Guidelines**
+//             - Refine the language to improve **flow** and **readability** without altering the original meaning of the code or summary.
+//             - Explain technical terms, functions, or complex logic using **simple language** to aid understanding.
+//             - Add **context** (e.g., file purpose, usage in the project) to make the summary actionable for interns.
+//             - Highlight **key takeaways** or practical insights (e.g., "This file handles routing") to boost comprehension.
+
+//             ---
+
+//             ### 4. **Handling Edge Cases**
+//             - If the content is incomplete (e.g., missing summary or partial code), **indicate the gap** and provide a logical interpretation.
+//             - If details are missing, make an informed guess where possible or note the limitation (e.g., "Purpose unclear without more context").
+//             - If the content is irrelevant to the repository or question, respond with a polite explanation and suggest checking the repo directly.
+
+//             ---
+//             ## 🚀 **Task**
+//           You are GitBuddy, an AI code assistant helping technical interns navigate a GitHub repository.
+//           Provide clear, step-by-step answers in markdown syntax, including code snippets where relevant.
+//           Traits: expert knowledge, helpfulness, cleverness, articulateness, friendly, kind, and inspiring.
+//           Use the context below to answer accurately, avoiding invented information.
+
+//           START CONTEXT BLOCK
+//           ${context}
+//           END OF CONTEXT BLOCK
+
+//           START QUESTION
+//           ${question}
+//           END OF QUESTION
+
+//           If the context lacks sufficient information, say: "I'm sorry, but I don't have enough data from the repository to answer this fully. Try asking something more specific or check the repo directly."
+//         `,
+//       });
+
+//       for await (const delta of textStream) {
+//         stream.update(delta);
+//       }
+//       stream.done();
+//     } catch (error) {
+//       console.error(`Error generating answer for project ${projectId}:`, error);
+//       stream.error("Unable to generate an answer due to an error.");
+//     }
+//   })();
+
+//   return { output: stream.value, filesReferences };
+// }
+
+// "use server";
+
+import { Octokit } from "octokit";
+// import { prisma } from "@/lib/db";
+// import { streamText } from "ai";
+// import { google } from "@ai-sdk/google";
+// import { createStreamableValue } from "ai/rsc";
+// import { retrieveVectorResults, SearchResult } from "@/lib/retrieval";
+// import { RepoGenerateEmbeddings } from "./githubLoader";
+
+const octokit = new Octokit({
+  auth: process.env.GITHUB_TOKEN,
+});
+
+interface FileReference {
+  fileName: string;
+  sourceCode: string;
+  summary: string;
+  score?: number;
+}
+
+// /**
+//  * Enhanced askQuestion function with Pinecone retrieval
+//  */
+export async function askQuestion(question: string, projectId: string) {
+  console.log("Asking question:", question);
+  console.log("For project:", projectId);
+
   const stream = createStreamableValue();
 
   // Check project status
@@ -140,13 +299,9 @@ export async function askQuestion(question: string, projectId: string) {
     return { output: stream.value, filesReferences: [] };
   }
 
-    // await RepoGenerateEmbeddings(projectId);
-
-  // if (project.indexingStatus !== "COMPLETED") {
-  //   stream.update("Error: Project indexing is not yet complete. Please wait.");
-  //   stream.done();
-  //   return { output: stream.value, filesReferences: [] };
-  // }
+  if (project.indexingStatus !== "COMPLETED") {
+    await RepoGenerateEmbeddings(projectId);
+  }
 
   // Retrieve vector results
   let filesReferences: SearchResult[];
@@ -159,20 +314,58 @@ export async function askQuestion(question: string, projectId: string) {
     return { output: stream.value, filesReferences: [] };
   }
   console.log("filesReferences", filesReferences);
-  
+
   if (filesReferences.length === 0) {
-    stream.update("No relevant information found in the repository.");
-    stream.done();
-    return { output: stream.value, filesReferences: [] };
+    // Fallback to GitHub API if a specific file is mentioned
+    const filePathMatch = question.match(/\(([^)]+)\)/);
+    const specificFilePath = filePathMatch ? filePathMatch[1] : null;
+
+    if (specificFilePath) {
+      try {
+        const [owner, repo] = project.githubUrl.split("/").slice(-2);
+        const fileResponse = await octokit.rest.repos.getContent({
+          owner,
+          repo,
+          path: specificFilePath,
+        });
+
+        if ("content" in fileResponse.data) {
+          const fileContent = Buffer.from(fileResponse.data.content, "base64").toString("utf-8");
+          filesReferences = [
+            {
+              fileName: specificFilePath,
+              sourceCode: fileContent,
+              summary: `The file ${specificFilePath} was retrieved directly from GitHub. No summary available from Pinecone.`,
+              score: 1.0,
+            },
+          ];
+        } else {
+          stream.update(`Error: The file ${specificFilePath} could not be found in the repository.`);
+          stream.done();
+          return { output: stream.value, filesReferences: [] };
+        }
+      } catch (error) {
+        console.error(`Error fetching file ${specificFilePath} from GitHub:`, error);
+        stream.update(`Error: Unable to fetch the file ${specificFilePath} from GitHub. Please check the file path and try again.`);
+        stream.done();
+        return { output: stream.value, filesReferences: [] };
+      }
+    } else {
+      stream.update("No relevant information found in the repository.");
+      stream.done();
+      return { output: stream.value, filesReferences: [] };
+    }
   }
 
-  // Build context
+  // Build context, leveraging the structured summaries
   let context = "";
   for (const doc of filesReferences) {
     context += `
-      File: ${doc.fileName}
-      Summary: ${doc.summary}
-      Code Content:
+      ### File: ${doc.fileName}
+      #### Summary:
+      ${doc.summary}
+
+      #### Code Content:
       \`\`\`
       ${doc.sourceCode.slice(0, 2000)}
       \`\`\`
@@ -180,51 +373,55 @@ export async function askQuestion(question: string, projectId: string) {
   }
 
   // Stream answer
-
-
   (async () => {
     try {
       const { textStream } = await streamText({
-        model: google('gemini-1.5-flash'),
+        model: google("gemini-1.5-flash"),
         prompt: `
-        You are **GitBuddy**, an intelligent AI assistant designed to help technical interns understand and navigate GitHub repositories. Your task is to transform raw repository data—such as file names, source code, and summaries—into a **well-organized, professional-quality summary** in **Markdown format**. The goal is to present the content in a clear, structured, and engaging manner, making it easy for interns to grasp key details and use the information effectively.
+          You are **GitBuddy**, an intelligent AI assistant designed to help technical interns understand and navigate GitHub repositories. Your task is to provide clear, actionable, and professional responses in **Markdown format**, tailored to the user's query. You can analyze code, suggest improvements, identify errors, or provide general guidance based on the context provided.
 
-            ---
+          ---
 
-            ## ✅ **Guidelines for Summarization**
-            Follow these detailed instructions to ensure the summary is polished and intern-friendly:
+          ## ✅ **Guidelines for Responses**
 
-            ### 1. **Markdown Formatting**
-            - Use appropriate **headings** (\`#\`, \`##\`, \`###\`) to organize content logically and enhance readability.
-            - Present information using **bullet points** and **numbered lists** for clarity and structure.
-            - For code snippets or file references, use **code blocks** (\`\`\`language) with the appropriate language (e.g., \`typescript\`, \`javascript\`).
-            - Apply **bold** or *italic* text for emphasis where needed to highlight key points.
+          ### 1. **Markdown Formatting**
+          - Use **headings** (\`#\`, \`##\`, \`###\`) to organize content logically.
+          - Use **bullet points** and **numbered lists** for clarity.
+          - For code snippets, use **code blocks** (\`\`\`language) with the appropriate language (e.g., \`typescript\`, \`javascript\`).
+          - Apply **bold** or *italic* text for emphasis where needed.
 
-            ---
+          ### 2. **Response Style**
+          - Be **concise** yet **comprehensive**—focus on the user's query while simplifying complex concepts.
+          - Use a **friendly, approachable tone** with a professional edge, suitable for technical interns.
+          - Provide **step-by-step explanations** for code improvements or error fixes.
+          - Highlight **key takeaways** or practical insights (e.g., "This file handles routing").
 
-            ### 2. **Summarization Style**
-            - Be **concise** yet **comprehensive**—capture essential details while simplifying complex code or concepts.
-            - Use a **friendly, approachable tone** with a professional edge, suitable for technical interns.
-            - Eliminate redundant or irrelevant code/comments without losing critical functionality or intent.
-            - Ensure the summary is easy to follow, with a logical flow tailored to beginners.
+          ### 3. **Handling Specific Query Types**
+          - **Code Improvement (e.g., "improve the styling and UI")**:
+            - Analyze the provided code and suggest specific improvements in styling, UI, or structure.
+            - Provide a revised version of the code with explanations for each change.
+            - Focus on modern best practices (e.g., Tailwind CSS, responsive design, accessibility).
+          - **Error Detection (e.g., "tell me the error in the file")**:
+            - Analyze the code for syntax errors, logical issues, or potential bugs.
+            - Explain the error in simple terms and provide a corrected version of the code.
+            - Suggest best practices to avoid similar issues in the future.
+          - **General Queries**:
+            - Summarize the file's purpose, functionality, or role in the project using the provided summary.
+            - Provide actionable advice based on the query (e.g., "To change the homepage, edit this file").
 
-            ---
+          ### 4. **Edge Cases**
+          - If the file content is incomplete, indicate the gap and provide a logical interpretation.
+          - If the query is unrelated to the file, respond with: "This query doesn't seem related to the provided file. Try asking something more specific or check the repo directly."
+          - If no actionable insights can be provided, say: "I'm sorry, but I don't have enough data to answer this fully. Try asking something more specific or check the repo directly."
 
-            ### 3. **Enhancement Guidelines**
-            - Refine the language to improve **flow** and **readability** without altering the original meaning of the code or summary.
-            - Explain technical terms, functions, or complex logic using **simple language** to aid understanding.
-            - Add **context** (e.g., file purpose, usage in the project) to make the summary actionable for interns.
-            - Highlight **key takeaways** or practical insights (e.g., "This file handles routing") to boost comprehension.
+          ### 5. **Leverage Structured Summaries**
+          - The context includes detailed summaries for each file, structured with sections like "Overview", "Key Components", "Interactions", "Dependencies", and "Key Takeaways".
+          - Use these summaries to answer general queries about the file's purpose or role.
+          - For code-specific queries (e.g., improvements, errors), analyze the "Code Content" section in addition to the summary.
 
-            ---
+          ---
 
-            ### 4. **Handling Edge Cases**
-            - If the content is incomplete (e.g., missing summary or partial code), **indicate the gap** and provide a logical interpretation.
-            - If details are missing, make an informed guess where possible or note the limitation (e.g., "Purpose unclear without more context").
-            - If the content is irrelevant to the repository or question, respond with a polite explanation and suggest checking the repo directly.
-
-            ---
-            ## 🚀 **Task**
+          ## 🚀 **Task**
           You are GitBuddy, an AI code assistant helping technical interns navigate a GitHub repository.
           Provide clear, step-by-step answers in markdown syntax, including code snippets where relevant.
           Traits: expert knowledge, helpfulness, cleverness, articulateness, friendly, kind, and inspiring.

@@ -1,6 +1,7 @@
 
 import { Pinecone, PineconeRecord } from "@pinecone-database/pinecone";
 import dotenv from 'dotenv';
+import { prisma } from "./db";
 dotenv.config();
 
 export const getPineconeClient = () => {
@@ -39,6 +40,10 @@ export async function uploadToPinecone(vectors: PineconeRecord[], namespace: str
     }));
     await ns.upsert(sanitizedVectors);
     console.log("Vectors upserted successfully.");
+    await prisma.project.update({
+      where: { id: namespace },
+      data: { indexingStatus: "COMPLETED" },
+    });
   }
   catch (error) {
     console.error("Error upserting vectors:", error);

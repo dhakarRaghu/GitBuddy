@@ -1,29 +1,34 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { ExternalLink, GitCommit } from "lucide-react";
+import { ExternalLink, GitCommit, RefreshCw } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
-import { MemoizedMarkdown } from "@/components/memorized-markdown"; // Your markdown component
-import { pollCommits } from "@/lib/github"; // Assuming this fetches and saves commits
+import { MemoizedMarkdown } from "@/components/memorized-markdown";
+import { pollCommits } from "@/lib/github";
 import { getCommit } from "@/lib/query";
 
-// Fetch commits (assumes pollCommits saves and returns latest commits)
-const getCommits = async ({ projectId }: { projectId: string }) => {
-  await pollCommits(projectId); // Ensure commits are polled and saved
-  const commits = await getCommit(projectId); // Fetch commits from the database
-  return commits;
+const getCommits = async ({ projectId}: { projectId: string}) => {
+  await pollCommits(projectId); // Poll only if forced or on initial load
+  return await getCommit(projectId); // Fetch from DB
 };
 
 const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl?: string }) => {
-    console.log("hgcjh ",projectId, githubUrl);
-  const { data: commits, isLoading, isError } = useQuery({
+
+  const { data: commits, isLoading, isError, refetch } = useQuery({
     queryKey: ["commits", projectId],
-    queryFn: () => getCommits({ projectId }),
+    queryFn: () => getCommits({ projectId}),
+    // Cache configuration
+    staleTime: 30 * 60 * 1000, // 30 minutes - data is considered fresh for this duration
+    // cacheTime: 60 * 60 * 1000, // 1 hour - data stays in cache for this duration after last use
+    refetchOnWindowFocus: false, // Prevent refetching when window regains focus
+    refetchOnMount: false, // Prevent refetching on component mount if data is in cache
+    // keepPreviousData: true, // Keep showing previous data while fetching new data
   });
 
   if (isLoading) return <CommitLogSkeleton />;
@@ -32,11 +37,16 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl?: st
 
   return (
     <div className="rounded-lg bg-white dark:bg-gray-900 p-6 shadow-lg border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
-      <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-4">Commit History</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Commit History</h2>
+        {/* <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button> */}
+      </div>
       <ul className="space-y-6" aria-label="Commit history">
         {commits.map((commit: any, commitIdx: number) => (
           <li key={commit.id} className="relative flex gap-x-4">
-            {/* Timeline Line */}
             <div
               className={cn(
                 commitIdx === commits.length - 1 ? "h-6" : "-bottom-6",
@@ -45,8 +55,6 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl?: st
             >
               <div className="w-px bg-gradient-to-b from-gray-200 to-gray-400 dark:from-gray-700 dark:to-gray-500" />
             </div>
-
-            {/* Avatar with Commit Icon */}
             <div className="relative mt-3 flex-none">
               <Avatar className="h-10 w-10 ring-2 ring-gray-200 dark:ring-gray-700">
                 <AvatarImage src={commit.commitAuthorAvatar} alt={`${commit.commitAuthorName}'s avatar`} />
@@ -58,8 +66,6 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl?: st
                 <GitCommit className="h-3 w-3 text-primary" />
               </div>
             </div>
-
-            {/* Commit Content */}
             <div className="flex-auto rounded-md bg-gray-50 dark:bg-gray-800 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 transition-all duration-200 hover:ring-gray-300 dark:hover:ring-gray-600">
               <div className="flex items-center justify-between">
                 <Link
@@ -70,24 +76,18 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl?: st
                   <span>{commit.commitAuthorName}</span>
                   <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-300" />
                 </Link>
-                <time
-                  dateTime={commit.commitDate}
-                  className="text-xs text-gray-500 dark:text-gray-400"
-                >
+                <time dateTime={commit.commitDate} className="text-xs text-gray-500 dark:text-gray-400">
                   {formatDistanceToNow(new Date(commit.commitDate), { addSuffix: true })}
                 </time>
               </div>
-
               <h3 className="mt-2 text-base font-semibold text-gray-900 dark:text-gray-100">
                 {commit.commitMessage}
               </h3>
-
               {commit.summary && (
                 <div className="mt-2">
                   <MemoizedMarkdown content={commit.summary} id={commit.id} />
                 </div>
               )}
-
               <div className="mt-4 flex items-center gap-x-2 text-xs">
                 <span className="font-medium text-gray-500 dark:text-gray-400">Commit:</span>
                 <span className="font-mono text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">
@@ -101,7 +101,6 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl?: st
     </div>
   );
 };
-
 const CommitLogSkeleton = () => (
   <div className="rounded-lg bg-white dark:bg-gray-900 p-6 shadow-lg border border-gray-200 dark:border-gray-700">
     <Skeleton className="h-6 w-1/4 mb-4" />

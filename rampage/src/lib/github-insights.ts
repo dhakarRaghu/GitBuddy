@@ -1,4 +1,5 @@
 import { Octokit } from 'octokit';
+import { prisma } from './db';
 // import { db } from '~/server/db'; // Assuming Prisma setup
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN});
@@ -87,8 +88,14 @@ const parseRepoUrl = (githubUrl: string): RepoInfo => {
   return { owner: parts[0], repo: parts[1] };
 };
 
-export const getRepoStatus = async (githubUrl: string): Promise<RepoStatus> => {
-  const { owner, repo } = parseRepoUrl(githubUrl);
+export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
+  const githubUrl = await prisma.project.findUnique({
+     where: { id: projectId },
+     select :{
+        githubUrl: true
+     }
+   })
+  const { owner, repo } = parseRepoUrl(githubUrl?.githubUrl || '');
 
   try {
     // Fetch basic repo info

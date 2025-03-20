@@ -8,6 +8,7 @@ import {  summariseCode } from './gemini';
 import { uploadToPinecone } from './pineconedb';
 import { PineconeRecord } from '@pinecone-database/pinecone';
 import { generateEmbedding, generateEmbeddings } from './repoEmbedding';
+import { toast } from 'sonner';
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
@@ -150,10 +151,10 @@ export const loadGithubRepo = async (githubUrl: string) => {
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Configuration for rate limiting and processing
-const BATCH_SIZE = 3; // Adjust based on API limits
-const DELAY_BETWEEN_BATCHES_MS = 2000; // 1 second delay between batches
+const BATCH_SIZE = 5; // Adjust based on API limits
+const DELAY_BETWEEN_BATCHES_MS = 1000; // 1 second delay between batches
 const MAX_RETRIES = 3; // Number of retry attempts for rate limit errors
-const BASE_RETRY_DELAY_MS = 2000; // Base delay for retries
+const BASE_RETRY_DELAY_MS = 1000; // Base delay for retries
 
 export interface EmbeddingResult {
   summary: string;
@@ -186,7 +187,7 @@ export const RepoGenerateEmbeddings = async (
   for (let i = 0; i < docs.length; i += BATCH_SIZE) {
     const batch = docs.slice(i, i + BATCH_SIZE);
     console.log(`Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(docs.length / BATCH_SIZE)}`);
-
+    toast.success(`Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(docs.length / BATCH_SIZE)}`);
     const batchPromises = batch.map(async (doc) => {
       const cacheKey = doc.metadata.source || "unknown_file";
 

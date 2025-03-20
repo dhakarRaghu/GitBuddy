@@ -134,71 +134,71 @@ export const aiSummariseCommit = async (diff: string): Promise<string> => {
   //   }
   // }
 
-  export async function summariseCode(doc: Document): Promise<string> {
-    const fileName = doc.metadata.source || "unknown file";
-    console.log(`Generating summary for ${fileName}`);
+  // export async function summariseCode(doc: Document): Promise<string> {
+  //   const fileName = doc.metadata.source || "unknown file";
+  //   console.log(`Generating summary for ${fileName}`);
   
-    const MAX_CODE_SIZE = 10000; // Increased to 15k characters (approx. 3k-4k tokens, well within Gemini 1.5 Flash limits)
-    const code = doc.pageContent.slice(0, MAX_CODE_SIZE);
-    if (!code.trim()) {
-      console.warn(`Empty code content for ${fileName}`);
-      return `The file ${fileName} is empty or contains no meaningful content.`;
-    }
-    if (doc.pageContent.length > MAX_CODE_SIZE) {
-      console.warn(`Code for ${fileName} truncated from ${doc.pageContent.length} to ${MAX_CODE_SIZE} characters`);
-    }
+  //   const MAX_CODE_SIZE = 10000; // Increased to 15k characters (approx. 3k-4k tokens, well within Gemini 1.5 Flash limits)
+  //   const code = doc.pageContent.slice(0, MAX_CODE_SIZE);
+  //   if (!code.trim()) {
+  //     console.warn(`Empty code content for ${fileName}`);
+  //     return `The file ${fileName} is empty or contains no meaningful content.`;
+  //   }
+  //   if (doc.pageContent.length > MAX_CODE_SIZE) {
+  //     console.warn(`Code for ${fileName} truncated from ${doc.pageContent.length} to ${MAX_CODE_SIZE} characters`);
+  //   }
   
-    try {
-      const prompt = `
-        You are an expert senior software engineer onboarding a junior engineer to a project while also preparing detailed summaries for an AI system to generate embeddings. Your task is to summarize the purpose, key functionality, and role of the file "${fileName}" in a way that:
-        Your task is to analyze the file "${fileName}" and provide a structured and informative summary that serves two key purposes:
-        1. **Onboarding** - Make it clear and easy for a junior engineer to understand the purpose and functionality of the file.
-        2. **AI Embedding** - Include enough detail and structure to enable accurate retrieval when answering technical questions.
+  //   try {
+  //     const prompt = `
+  //       You are an expert senior software engineer onboarding a junior engineer to a project while also preparing detailed summaries for an AI system to generate embeddings. Your task is to summarize the purpose, key functionality, and role of the file "${fileName}" in a way that:
+  //       Your task is to analyze the file "${fileName}" and provide a structured and informative summary that serves two key purposes:
+  //       1. **Onboarding** - Make it clear and easy for a junior engineer to understand the purpose and functionality of the file.
+  //       2. **AI Embedding** - Include enough detail and structure to enable accurate retrieval when answering technical questions.
 
-        ### Provide a detailed summary that includes:
-        - **Purpose**: Explain the file's role within the project and why it's important.
-        - **Key Components**: Identify major functions, classes, variables, or logic blocks and describe their responsibilities.
-        - **Interaction**: Explain how these components interact with each other and with other files or systems (e.g., APIs, modules, UI).
-        - **Patterns & Dependencies**: Highlight any notable patterns, dependencies, or external libraries used.
-        - **Actionability**: Provide enough insight to answer common developer questions like:
-            - "Which file handles X?"
-            - "Where is Y defined?"
-            - "How does Z work?"
+  //       ### Provide a detailed summary that includes:
+  //       - Purpose: Explain the file's role within the project and why it's important.
+  //       - Key Components: Identify major functions, classes, variables, or logic blocks and describe their responsibilities.
+  //       - Interaction: Explain how these components interact with each other and with other files or systems (e.g., APIs, modules, UI).
+  //       - Patterns & Dependencies**: Highlight any notable patterns, dependencies, or external libraries used.
+  //       - Actionability: Provide enough insight to answer common developer questions like:
+  //           - "Which file handles X?"
+  //           - "Where is Y defined?"
+  //           - "How does Z work?"
   
-        Here is the code:
-        \`\`\`
-        ${code}
-        \`\`\`
+  //       Here is the code:
+  //       \`\`\`
+  //       ${code}
+  //       \`\`\`
   
-        Provide a summary in plain English that:
-        - Describes what the file does and why it matters in the project.
-        - Lists key functions, classes, or logic blocks and their purposes.
-        - Notes any connections to other files or systems (if inferable).
-        - Ensures enough context for embeddings to match user queries effectively.
-        - Provide enough detail for a junior engineer to understand the file's role.
+  //       Provide a summary in plain English that:
+  //       - Describes what the file does and why it matters in the project.
+  //       - Lists key functions, classes, or logic blocks and their purposes.
+  //       - Notes any connections to other files or systems (if inferable).
+  //       - Ensures enough context for embeddings to match user queries effectively.
+  //       - Provide enough detail for a junior engineer to understand the file's role.
 
-        # DO NOT INCLUDE UNNECESSARY COMMENTS OR METADATA IN THE SUMMARY.
-      `;
+  //       # DO NOT INCLUDE UNNECESSARY METADATA IN THE SUMMARY.
+  //     `;
   
-      const response = await model.generateContent([prompt]);
-      let summary = response.response.text().trim();
+  //     const response = await model.generateContent([prompt]);
+  //     let summary = response.response.text().trim();
   
-      // // Word count check (target 150-200 words)
-      const words = summary.split(/\s+/).length;
-      if (words > 200) {
-        console.warn(`Summary for ${fileName} exceeds 200 words (${words}), truncating...`);
-        summary = summary.split(/\s+/).slice(0, 195).join(" ") + "...";
-      } else if (words < 150) {
-        console.warn(`Summary for ${fileName} is under 150 words (${words}), may lack detail`);
-      }
+  //     // // Word count check (target 150-200 words)
+  //     const words = summary.split(/\s+/).length;
+  //     // if (words > 200) {
+  //     //   console.warn(`Summary for ${fileName} exceeds 200 words (${words}), truncating...`);
+  //     //   summary = summary.split(/\s+/).slice(0, 195).join(" ") + "...";
+  //     // } else if (words < 150) {
+  //     //   console.warn(`Summary for ${fileName} is under 150 words (${words}), may lack detail`);
+  //     // }
   
-      console.log(`Summary for ${fileName} (${words} words):`, summary);
-      return summary;
-    } catch (error) {
-      console.error(`Error summarizing ${fileName}:`, error);
-      return `The file ${fileName} could not be summarized due to an error. It contains code that may define functions, classes, or logic, but specific details are unavailable. Check the file manually for its role in the project.`;
-    }
-  }
+  //     console.log(`Summary for ${fileName} (${words} words):`, summary);
+  //     return summary;
+  //   } catch (error) {
+  //     console.error(`Error summarizing ${fileName}:`, error);
+  //     return `The file ${fileName} could not be summarized due to an error. It contains code that may define functions, classes, or logic, but specific details are unavailable. Check the file manually for its role in the project.`;
+  //   }
+  // }
 
 
 
@@ -253,4 +253,175 @@ export async function generateEmbedding(text: string, retries: number = 3, timeo
     }
   }
   throw new Error("Unexpected exit from retry loop");
+}
+
+
+// import { Document } from "@langchain/core/documents";
+// import { model } from "@/lib/gemini"; // Assuming this is your Gemini model setup
+
+// interface FileSummary {
+//   summary: string;
+//   metadata?: {
+//     fileName: string;
+//     language?: string;
+//     fileType?: string;
+//     wordCount: number;
+//   };
+// }
+
+export async function summariseCode(doc: Document): Promise<string> {
+  const fileName = doc.metadata.source || "unknown file";
+  console.log(`Generating summary for ${fileName}`);
+
+  const MAX_CODE_SIZE = 15000; // Increased to 15k characters to allow more context (within Gemini 1.5 Flash limits)
+  const code = doc.pageContent.slice(0, MAX_CODE_SIZE);
+  if (!code.trim()) {
+    console.warn(`Empty code content for ${fileName}`);
+    return `The file ${fileName} is empty or contains no meaningful content.`;
+  }
+  if (doc.pageContent.length > MAX_CODE_SIZE) {
+    console.warn(`Code for ${fileName} truncated from ${doc.pageContent.length} to ${MAX_CODE_SIZE} characters`);
+  }
+
+  // Infer file language and type from the file extension (optional metadata for embeddings)
+  const fileExtension = fileName.split(".").pop()?.toLowerCase();
+  const languageMap: { [key: string]: string } = {
+    ts: "TypeScript",
+    tsx: "TypeScript (TSX)",
+    js: "JavaScript",
+    jsx: "JavaScript (JSX)",
+    py: "Python",
+    css: "CSS",
+    html: "HTML",
+  };
+  const language = languageMap[fileExtension || ""] || "Unknown";
+  const fileType = fileExtension === "tsx" || fileExtension === "jsx" ? "Component" : "Module";
+
+  try {
+    const prompt = `
+      You are an expert senior software engineer tasked with creating a detailed summary of the file "${fileName}" for two purposes:
+      1. **Onboarding a Junior Engineer**: Help a junior engineer understand the file's purpose, functionality, and role in the project.
+      2. **AI Embedding for Retrieval**: Provide a detailed, structured summary that enables accurate retrieval for technical queries (e.g., "What does ${fileName} do?", "Tell me about ${fileName}") by explicitly mentioning the file name in key sections.
+
+      ---
+
+      ## ✅ **Guidelines for Summarization**
+
+      ### 1. **Markdown Formatting**  
+          - Use appropriate **headings** (\`#\`, \`##\`, \`###\`) to organize the content logically and enhance readability.  
+          - Present information using **bullet points** and **numbered lists** for clarity and structure.  
+          - For technical terms or code snippets, use **code blocks** (\`\`\`language).  
+          - Apply **bold** or *italic* text for emphasis where needed.  
+
+      - Include the following sections:
+        - **Overview of ${fileName}**: A brief description of the file's purpose and role in the project.
+        - **Key Components in ${fileName}**: List major functions, classes, variables, or logic blocks, and describe their responsibilities.
+        - **Interactions of ${fileName}**: Explain how the file interacts with other files, modules, APIs, or systems.
+        - **Dependencies in ${fileName}**: Highlight notable dependencies, libraries, or patterns used.
+        - **Key Takeaways for ${fileName}**: Provide actionable insights for common developer questions.
+
+      ### 2. **Detail and Clarity**
+      - Be **detailed** but **concise**—but not more than 500 words to capture enough context for embeddings.
+      - Add **context** where necessary to clarify the content and make it more actionable without losing the core message..  
+      - Use a **friendly, approachable tone** suitable for junior engineers, while maintaining technical accuracy.
+      - Explain technical concepts in simple terms (e.g., "In ${fileName}, this function fetches user data from an API").
+      - Include **specific names** of functions, classes, or variables to improve retrieval accuracy (e.g., "The \`fetchUserData\` function in ${fileName} handles API calls").
+
+      ### 3. **File Name Inclusion for Embeddings**
+      - Explicitly mention the file name "${fileName}" in each section to improve embedding match accuracy.
+      - Use the file name naturally in sentences (e.g., "In ${fileName}, the \`Page\` component renders the homepage").
+      - Pair the file name with relevant keywords (e.g., "${fileName} handles the homepage", "${fileName} uses React").
+
+      ### 4. **Keyword Optimization for Embeddings**
+      - Include **relevant keywords** that match potential user queries, such as:
+        - File purpose (e.g., "homepage", "routing", "authentication").
+        - Function/class names (e.g., "fetchUserData", "UserProfile").
+        - Libraries or frameworks (e.g., "React", "Next.js", "Tailwind CSS").
+        - Key concepts (e.g., "state management", "API integration").
+      - Avoid generic phrases—be specific to the file's content.
+
+      ### 5. **Edge Cases**
+      - If the code is incomplete or unclear, note the limitation (e.g., "Purpose of ${fileName} unclear due to partial code").
+      - If the file appears irrelevant to the project, explain why (e.g., "${fileName} seems to be a configuration file with no direct functionality").
+      - If no meaningful summary can be generated, provide a fallback description (e.g., "${fileName} contains code, but its purpose is unclear").
+
+      ### 6. **Avoid Unnecessary Metadata**
+      - Do not include metadata like file paths, line numbers, or timestamps in the summary.
+      - Focus on the content and its role in the project.
+
+      ---
+
+      ## 🚀 **Task**
+      Analyze the file "${fileName}" and provide a detailed summary following the guidelines above. The summary should help a junior engineer understand the file and enable accurate retrieval for technical queries about "${fileName}".
+
+      Here is the code:
+      \`\`\`
+      ${code}
+      \`\`\`
+
+      Provide the summary in Markdown format with the specified sections, ensuring the file name "${fileName}" is mentioned in each section.
+    `;
+
+    const response = await model.generateContent([prompt]);
+    let summary = response.response.text().trim();
+
+    // Ensure the summary has the required sections (fallback if missing)
+    const requiredSections = [
+      `Overview of ${fileName}`,
+      `Key Components in ${fileName}`,
+      `Interactions of ${fileName}`,
+      `Dependencies in ${fileName}`,
+      `Key Takeaways for ${fileName}`,
+    ];
+    let formattedSummary = summary;
+    for (const section of requiredSections) {
+      if (!summary.includes(`## ${section}`)) {
+        formattedSummary += `\n\n## ${section}\nDetails not available for ${fileName}. Please review the file manually for more information.`;
+      }
+    }
+
+    // Word count check (target 200-300 words)
+    const words = formattedSummary.split(/\s+/).length;
+    // if (words > 300) {
+    //   console.warn(`Summary for ${fileName} exceeds 300 words (${words}), truncating...`);
+    //   formattedSummary = formattedSummary.split(/\s+/).slice(0, 295).join(" ") + "...";
+    // } else if (words < 200) {
+    //   console.warn(`Summary for ${fileName} is under 200 words (${words}), adding more context...`);
+    //   formattedSummary += `\n\n## Additional Context for ${fileName}\nThe file ${fileName} is a ${language} ${fileType.toLowerCase()} that likely plays a role in the project. Review the code for specific functionality.`;
+    // }
+
+    console.log(`Summary for ${fileName} (${words} words):`, formattedSummary);
+
+    // Optionally, return metadata for embeddings (not included in the summary text)
+    // const summaryWithMetadata: FileSummary = {
+    //   summary: formattedSummary,
+    //   metadata: {
+    //     fileName,
+    //     language,
+    //     fileType,
+    //     wordCount: words,
+    //   },
+    // };
+
+    return formattedSummary;
+  } catch (error) {
+    console.error(`Error summarizing ${fileName}:`, error);
+    const fallbackSummary = `
+## Overview of ${fileName}
+The file ${fileName} contains ${language} code, but its purpose could not be determined due to an error.
+
+## Key Components in ${fileName}
+Specific functions, classes, or logic blocks in ${fileName} are unavailable.
+
+## Interactions of ${fileName}
+Interactions of ${fileName} with other files or systems are unclear.
+
+## Dependencies in ${fileName}
+Dependencies used by ${fileName} could not be identified.
+
+## Key Takeaways for ${fileName}
+Check ${fileName} manually to understand its role in the project.
+    `;
+    return fallbackSummary;
+  }
 }

@@ -3,7 +3,7 @@
 import { prisma } from "./db";
 import { getAuthSession } from "./auth";
 import { checkCreditsAndStructure } from "./githubLoader";
-import { initializeProjectEmbeddings } from "@/app/project/[projectId]/qa/actions";
+// import { initializeProjectEmbeddings } from "@/app/project/[projectId]/qa/actions";
 import { redirect } from "next/navigation";
 
 
@@ -28,9 +28,6 @@ export async function CreateProject(githubUrl: string, name: string) {
         githubUrl,
       },
     });
-    
-    await initializeProjectEmbeddings(project.id , githubUrl);
-    // Associate with user
     await prisma.userToProject.create({
       data: {
         userId,

@@ -103,7 +103,7 @@ const DashBoardPage = () => {
 
       {/* Commit Log Section */}
       <div className="mt-8">
-      <CommitLog projectId={"cm8erre80000675ts606nrvq9"} githubUrl={"https://github.com/dhakarRaghu/WebGenie"} />
+      <CommitLog projectId={"cm8gg5ogd000075z7yj3hkygw"} githubUrl={"https://github.com/dhakarRaghu/WebGenie"} />
     </div>
     </div>
   );
