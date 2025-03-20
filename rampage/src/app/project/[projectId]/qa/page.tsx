@@ -196,7 +196,7 @@ export default function QA() {
               >
                 {message.type === "answer" && (
                   <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Image src="/logo4.png" alt="GitBuddy" width={20} height={20} />
+                    <Image src="/logo.png" alt="GitBuddy" width={20} height={20} />
                   </div>
                 )}
                 <div
@@ -228,7 +228,7 @@ export default function QA() {
             {isLoading && (
               <div className="flex justify-start gap-3">
                 <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Image src="/logo4.png" alt="GitBuddy" width={20} height={20} />
+                  <Image src="/logo.png" alt="GitBuddy" width={20} height={20} />
                 </div>
                 <div className="bg-muted p-3 rounded-lg">
                   <Loader2 className="w-5 h-5 animate-spin" />

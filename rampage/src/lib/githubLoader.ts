@@ -128,24 +128,57 @@ export async function checkCreditsAndStructure(githubUrl: string) {
 
 
 export const loadGithubRepo = async (githubUrl: string) => {
-  const loader = new GithubRepoLoader(githubUrl,{
-      branch: 'main',
-      ignoreFiles: ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'bun.lockb' , '.next' , 'node_modules' , 'dist'
-      , 'build' , 'out' , 'public' , 'coverage' , 'cypress' , 'tmp' , 'temp' , 'logs' , 'logs' , 'log','images' , '.DS_Store'
-      ],
-      recursive: true,
-      unknown:'warn',
-      maxConcurrency: 5
+  const loader = new GithubRepoLoader(githubUrl, {
+    branch: "main",
+    accessToken: process.env.GITHUB_TOKEN || "", // Ensure GITHUB_TOKEN is set in your environment
+    ignoreFiles: [
+      "package-lock.json",
+      "yarn.lock",
+      "pnpm-lock.yaml",
+      "bun.lockb",
+      ".next",
+      "node_modules",
+      "dist",
+      "build",
+      "out",
+      "public",
+      "coverage",
+      "cypress",
+      "tmp",
+      "temp",
+      "logs",
+      "log",
+      "images",
+      ".DS_Store",
+    ],
+    recursive: true,
+    unknown: "warn",
+    maxConcurrency: 3, // Reduced concurrency to minimize rate limit issues
   });
-  const docs = await loader.load();
-  // console.log("docs", docs);
 
-  // docs.map((doc) => {
-  //   console.log("metadata kjnkj", doc.metadata);
-  //   console.log("metadata", doc.metadata.sourceCodeEmbedding);
-  //   // console.log(`${doc.metadata.sourceCodeEmbedding}`, doc);
-  // });
-
+  // Fetch files with retry logic for rate limits
+  let docs: Document[] = [];
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      docs = await loader.load();
+      break;
+    } catch (error: any) {
+      if (error.message.includes("rate limit") || error.response?.status === 403) {
+        if (attempt === MAX_RETRIES) {
+          console.error(`Failed to load GitHub repo after ${MAX_RETRIES} attempts:`, error);
+          throw new Error(
+            "GitHub API rate limit exceeded. Please try again later or check the repository directly.",
+          );
+        }
+        const retryDelay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+        console.warn(`GitHub API rate limit hit. Retrying after ${retryDelay}ms...`);
+        await delay(retryDelay);
+      } else {
+        console.error("Error loading GitHub repo:", error);
+        throw error;
+      }
+    }
+  }
   return docs;
 };
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -184,10 +217,13 @@ export const RepoGenerateEmbeddings = async (
   const embeddingCache = new Map<string, EmbeddingResult>();
 
   // Process documents in batches
+  if (!docs) {
+    throw new Error("Failed to load documents from the repository.");
+  }
   for (let i = 0; i < docs.length; i += BATCH_SIZE) {
     const batch = docs.slice(i, i + BATCH_SIZE);
     console.log(`Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(docs.length / BATCH_SIZE)}`);
-    toast.success(`Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(docs.length / BATCH_SIZE)}`);
+    // toast.success(`Processing batch ${i / BATCH_SIZE + 1} of ${Math.ceil(docs.length / BATCH_SIZE)}`);
     const batchPromises = batch.map(async (doc) => {
       const cacheKey = doc.metadata.source || "unknown_file";
 

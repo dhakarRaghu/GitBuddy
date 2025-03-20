@@ -1,3 +1,4 @@
+"use server"
 import { Octokit } from 'octokit';
 import { prisma } from './db';
 // import { db } from '~/server/db'; // Assuming Prisma setup
@@ -89,6 +90,7 @@ const parseRepoUrl = (githubUrl: string): RepoInfo => {
 };
 
 export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
+  console.log(`Fetching repo status for project ${projectId}`);
   const githubUrl = await prisma.project.findUnique({
      where: { id: projectId },
      select :{
@@ -96,6 +98,8 @@ export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
      }
    })
   const { owner, repo } = parseRepoUrl(githubUrl?.githubUrl || '');
+  console.log("owner", owner)
+  console.log("repo", repo)
 
   try {
     // Fetch basic repo info
@@ -181,7 +185,7 @@ export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
       owner,
       repo,
       tree_sha: allCommits[0]?.commit.tree.sha || 'HEAD',
-      recursive: true,
+      recursive: 'true',
     });
     const fileExtensions = new Map<string, number>();
     treeData.tree.forEach((item: any) => {
@@ -223,7 +227,7 @@ export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const commitFrequencyMap = new Map<string, number>(days.map(d => [d, 0]));
     allCommits.forEach(c => {
-      const day = days[new Date(c.commit.author?.date || c.commit.committer?.date).getDay()];
+      const day = days[new Date(c.commit.author?.date || c.commit.committer?.date || Date.now()).getDay()];
       commitFrequencyMap.set(day, (commitFrequencyMap.get(day) || 0) + 1);
     });
     const commitFrequency = Array.from(commitFrequencyMap.entries()).map(([day, count]) => ({ day, count }));

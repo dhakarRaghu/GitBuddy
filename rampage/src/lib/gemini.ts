@@ -256,19 +256,6 @@ export async function generateEmbedding(text: string, retries: number = 3, timeo
 }
 
 
-// import { Document } from "@langchain/core/documents";
-// import { model } from "@/lib/gemini"; // Assuming this is your Gemini model setup
-
-// interface FileSummary {
-//   summary: string;
-//   metadata?: {
-//     fileName: string;
-//     language?: string;
-//     fileType?: string;
-//     wordCount: number;
-//   };
-// }
-
 export async function summariseCode(doc: Document): Promise<string> {
   const fileName = doc.metadata.source || "unknown file";
   console.log(`Generating summary for ${fileName}`);
@@ -297,8 +284,15 @@ export async function summariseCode(doc: Document): Promise<string> {
   const language = languageMap[fileExtension || ""] || "Unknown";
   const fileType = fileExtension === "tsx" || fileExtension === "jsx" ? "Component" : "Module";
 
-  try {
-    const prompt = `
+  // Retry configuration
+  const MAX_RETRIES = 3;
+  const BASE_RETRY_DELAY_MS = 1000;
+  // const TIMEOUT_MS = 30000; // 30 seconds timeout for the API call
+
+  // Utility to delay execution
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const prompt = `
       You are an expert senior software engineer tasked with creating a detailed summary of the file "${fileName}" for two purposes:
       1. **Onboarding a Junior Engineer**: Help a junior engineer understand the file's purpose, functionality, and role in the project.
       2. **AI Embedding for Retrieval**: Provide a detailed, structured summary that enables accurate retrieval for technical queries (e.g., "What does ${fileName} do?", "Tell me about ${fileName}") by explicitly mentioning the file name in key sections.
@@ -322,7 +316,7 @@ export async function summariseCode(doc: Document): Promise<string> {
 
       ### 2. **Detail and Clarity**
       - Be **detailed** but **concise**—but not more than 500 words to capture enough context for embeddings.
-      - Add **context** where necessary to clarify the content and make it more actionable without losing the core message..  
+      - Add **context** where necessary to clarify the content and make it more actionable without losing the core message.  
       - Use a **friendly, approachable tone** suitable for junior engineers, while maintaining technical accuracy.
       - Explain technical concepts in simple terms (e.g., "In ${fileName}, this function fetches user data from an API").
       - Include **specific names** of functions, classes, or variables to improve retrieval accuracy (e.g., "The \`fetchUserData\` function in ${fileName} handles API calls").
@@ -362,8 +356,33 @@ export async function summariseCode(doc: Document): Promise<string> {
       Provide the summary in Markdown format with the specified sections, ensuring the file name "${fileName}" is mentioned in each section.
     `;
 
-    const response = await model.generateContent([prompt]);
-    let summary = response.response.text().trim();
+
+  try {
+    let summary: string;
+
+    // Retry loop for API rate limit errors
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await model.generateContent([prompt]);
+        summary = response.response.text().trim();
+        break; // Success, exit the retry loop
+      } catch (error: any) {
+        if (error.response?.status === 429 || error.message.includes("rate limit")) {
+          if (attempt === MAX_RETRIES) {
+            console.error(`Failed to summarize ${fileName} after ${MAX_RETRIES} attempts due to rate limit:`, error);
+            throw new Error("API rate limit exceeded after retries");
+          }
+          const retryDelay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+          console.warn(
+            `Rate limit hit while summarizing ${fileName}. Retrying (${attempt}/${MAX_RETRIES}) after ${retryDelay}ms...`,
+          );
+          await delay(retryDelay);
+        } else {
+          console.error(`Error summarizing ${fileName}:`, error);
+          throw error; // Non-rate-limit error, throw immediately
+        }
+      }
+    }
 
     // Ensure the summary has the required sections (fallback if missing)
     const requiredSections = [
@@ -373,35 +392,16 @@ export async function summariseCode(doc: Document): Promise<string> {
       `Dependencies in ${fileName}`,
       `Key Takeaways for ${fileName}`,
     ];
-    let formattedSummary = summary;
+    let formattedSummary = summary!;
     for (const section of requiredSections) {
-      if (!summary.includes(`## ${section}`)) {
+      if (!summary!.includes(`## ${section}`)) {
         formattedSummary += `\n\n## ${section}\nDetails not available for ${fileName}. Please review the file manually for more information.`;
       }
     }
 
-    // Word count check (target 200-300 words)
+    // Log the word count for debugging
     const words = formattedSummary.split(/\s+/).length;
-    // if (words > 300) {
-    //   console.warn(`Summary for ${fileName} exceeds 300 words (${words}), truncating...`);
-    //   formattedSummary = formattedSummary.split(/\s+/).slice(0, 295).join(" ") + "...";
-    // } else if (words < 200) {
-    //   console.warn(`Summary for ${fileName} is under 200 words (${words}), adding more context...`);
-    //   formattedSummary += `\n\n## Additional Context for ${fileName}\nThe file ${fileName} is a ${language} ${fileType.toLowerCase()} that likely plays a role in the project. Review the code for specific functionality.`;
-    // }
-
     console.log(`Summary for ${fileName} (${words} words):`, formattedSummary);
-
-    // Optionally, return metadata for embeddings (not included in the summary text)
-    // const summaryWithMetadata: FileSummary = {
-    //   summary: formattedSummary,
-    //   metadata: {
-    //     fileName,
-    //     language,
-    //     fileType,
-    //     wordCount: words,
-    //   },
-    // };
 
     return formattedSummary;
   } catch (error) {
@@ -423,5 +423,5 @@ Dependencies used by ${fileName} could not be identified.
 Check ${fileName} manually to understand its role in the project.
     `;
     return fallbackSummary;
-  }
+  } 
 }

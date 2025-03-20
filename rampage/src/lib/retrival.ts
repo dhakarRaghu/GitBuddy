@@ -15,6 +15,10 @@ const google = createGoogleGenerativeAI({
     apiKey: process.env.GEMINI_API_KEY,
   });
 
+const octokit = new Octokit({
+  auth: process.env.GITHUB_TOKEN,
+});
+
 // Initialize Pinecone and Gemini
 const pinecone = getPineconeClient();
 
@@ -267,9 +271,6 @@ import { Octokit } from "octokit";
 // import { retrieveVectorResults, SearchResult } from "@/lib/retrieval";
 // import { RepoGenerateEmbeddings } from "./githubLoader";
 
-const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
-});
 
 interface FileReference {
   fileName: string;
@@ -284,6 +285,7 @@ interface FileReference {
 export async function askQuestion(question: string, projectId: string) {
   console.log("Asking question:", question);
   console.log("For project:", projectId);
+  // console.log("process.env.GEMINI_API_KEY", process.env.GEMINI_API_KEY);
 
   const stream = createStreamableValue();
 
