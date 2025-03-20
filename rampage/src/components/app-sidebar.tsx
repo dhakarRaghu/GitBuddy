@@ -42,8 +42,8 @@ const items = [
     icon: Presentation,
   },
   {
-    title: "Billing",
-    url: "billing",
+    title: "PP and Issues",
+    url: "prAndissue",
     icon: CreditCard,
   },
 ];

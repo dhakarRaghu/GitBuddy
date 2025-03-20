@@ -1,11 +1,11 @@
-"use server"
+"use server";
+
 import { Octokit } from 'octokit';
 import { prisma } from './db';
-// import { db } from '~/server/db'; // Assuming Prisma setup
 
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN});
+const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-// Interfaces remain unchanged (RepoInfo, ContributorStats, etc.)
+// Interfaces (unchanged except for adding commitsPerDay)
 interface RepoInfo {
   owner: string;
   repo: string;
@@ -59,6 +59,11 @@ interface CommitSummary {
   impactScore: number;
 }
 
+interface CommitPerDay {
+  date: string;
+  count: number;
+}
+
 interface RepoStatus {
   name: string;
   description: string;
@@ -78,6 +83,7 @@ interface RepoStatus {
   averageIssueResolutionTime: number;
   averagePRReviewTime: number;
   commitFrequency: { day: string; count: number }[];
+  commitsPerDay: CommitPerDay[];
 }
 
 const parseRepoUrl = (githubUrl: string): RepoInfo => {
@@ -91,15 +97,20 @@ const parseRepoUrl = (githubUrl: string): RepoInfo => {
 
 export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
   console.log(`Fetching repo status for project ${projectId}`);
-  const githubUrl = await prisma.project.findUnique({
-     where: { id: projectId },
-     select :{
-        githubUrl: true
-     }
-   })
-  const { owner, repo } = parseRepoUrl(githubUrl?.githubUrl || '');
-  console.log("owner", owner)
-  console.log("repo", repo)
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      githubUrl: true,
+    },
+  });
+
+  if (!project?.githubUrl) {
+    throw new Error('Project not found or GitHub URL missing');
+  }
+
+  const { owner, repo } = parseRepoUrl(project.githubUrl);
+  console.log("owner", owner);
+  console.log("repo", repo);
 
   try {
     // Fetch basic repo info
@@ -111,6 +122,18 @@ export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
       repo,
       per_page: 100,
     });
+
+    // Calculate commits per day
+    const commitsPerDayMap = new Map<string, number>();
+    allCommits.forEach(c => {
+      const date = new Date(c.commit.author?.date || c.commit.committer?.date || Date.now())
+        .toISOString()
+        .split('T')[0]!; // Format as YYYY-MM-DD
+      commitsPerDayMap.set(date, (commitsPerDayMap.get(date) || 0) + 1);
+    });
+    const commitsPerDay: CommitPerDay[] = Array.from(commitsPerDayMap.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
 
     // Get unique contributors
     const uniqueContributors = [...new Set(allCommits.map(c => c.commit.author?.name || 'Unknown'))];
@@ -143,16 +166,27 @@ export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
     let codeFreqData: number[][] = [];
     try {
       const { data } = await octokit.rest.repos.getCodeFrequencyStats({ owner, repo });
+      console.log(`Code frequency data for ${owner}/${repo}:`, data); // Debug log
       codeFreqData = Array.isArray(data) ? data : [];
+      if (codeFreqData.length === 0) {
+        console.warn(`No code frequency data available for ${owner}/${repo}`);
+      }
     } catch (error) {
       console.warn('Code frequency unavailable:', error);
+      codeFreqData = [];
     }
 
-    const codeFrequency: CodeFrequency[] = codeFreqData.map(w => ({
-      weekStart: w[0] ? new Date(w[0] * 1000).toISOString().split('T')[0]! : '',
-      additions: w[1] || 0,
-      deletions: w[2] || 0,
-    }));
+    const codeFrequency: CodeFrequency[] = codeFreqData.map(w => {
+      if (!w || w.length < 3) {
+        console.warn('Invalid code frequency entry:', w);
+        return { weekStart: '', additions: 0, deletions: 0 };
+      }
+      return {
+        weekStart: w[0] ? new Date(w[0] * 1000).toISOString().split('T')[0]! : '',
+        additions: w[1] || 0,
+        deletions: w[2] || 0,
+      };
+    }).filter(entry => entry.weekStart !== ''); // Filter out invalid entries
 
     // Fetch issues
     const issues = await octokit.paginate(octokit.rest.issues.listForRepo, {
@@ -223,7 +257,7 @@ export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
       ? Math.round((prReviewTime / closedPRs.length) * 10) / 10
       : 0;
 
-    // Calculate commit frequency by day
+    // Calculate commit frequency by day of the week
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const commitFrequencyMap = new Map<string, number>(days.map(d => [d, 0]));
     allCommits.forEach(c => {
@@ -245,7 +279,7 @@ export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
         return {
           message: commit.commit.message.split('\n')[0] || 'No message',
           author: commit.commit.author?.name || 'Unknown',
-          date: commit.commit.author?.date || commit.commit.committer?.date,
+          date: commit.commit.author?.date || commit.commit.committer?.date || new Date().toISOString(),
           sha: commit.sha,
           impactScore,
         };
@@ -288,18 +322,15 @@ export const getRepoStatus = async (projectId: string): Promise<RepoStatus> => {
       stargazers: repoData.stargazers_count,
       forks: repoData.forks_count,
       languages,
-      keyCommits: keyCommits.sort((a, b) => b.impactScore - a.impactScore).slice(0, 5),
+      keyCommits: keyCommits.map(commit => ({
+        ...commit,
+        date: commit.date || new Date().toISOString(),
+      })).sort((a, b) => b.impactScore - a.impactScore).slice(0, 5),
       averageIssueResolutionTime,
       averagePRReviewTime,
       commitFrequency,
+      commitsPerDay,
     };
-
-    // Cache the result in Prisma
-    // await db.repoInsights.upsert({
-    //   where: { projectId },
-    //   update: { data: status, lastFetched: new Date() },
-    //   create: { projectId, data: status, lastFetched: new Date() },
-    // });
 
     return status;
   } catch (error) {
