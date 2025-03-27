@@ -8,6 +8,7 @@ import {  summariseCode } from './gemini';
 import { uploadToPinecone } from './pineconedb';
 import { PineconeRecord } from '@pinecone-database/pinecone';
 import { generateEmbedding } from './repoEmbedding';
+import { generateEmbedding_2, summariseCode_2 } from './gemini2';
 
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
@@ -270,42 +271,83 @@ export const RepoGenerateEmbeddings = async (
         return cachedResult;
       }
 
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-          const summary = await summariseCode(doc);
-          const embedding = await generateEmbedding(summary);
-          const result: EmbeddingResult = {
-            summary,
-            embedding,
-            sourceCode: doc.pageContent,
-            fileName: doc.metadata.source,
-          };
-
-          // Cache the result after successful embedding
-          embeddingCache.set(cacheKey, result);
-          return result;
-        } catch (error: any) {
-          // Handle rate limit errors
-          if (error.response?.status === 429 || error.message.includes("rate limit")) {
-            if (attempt === MAX_RETRIES) {
-              console.error(
-                `Failed to generate embedding for ${doc.metadata.source} after ${MAX_RETRIES} attempts:`,
-                error
+      if((i/BATCH_SIZE + 1)%2==0){
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            const summary = await summariseCode(doc);
+            const embedding = await generateEmbedding(summary);
+            const result: EmbeddingResult = {
+              summary,
+              embedding,
+              sourceCode: doc.pageContent,
+              fileName: doc.metadata.source,
+            };
+  
+            // Cache the result after successful embedding
+            embeddingCache.set(cacheKey, result);
+            return result;
+          } catch (error: any) {
+            // Handle rate limit errors
+            if (error.response?.status === 429 || error.message.includes("rate limit")) {
+              if (attempt === MAX_RETRIES) {
+                console.error(
+                  `Failed to generate embedding for ${doc.metadata.source} after ${MAX_RETRIES} attempts:`,
+                  error
+                );
+                return null;
+              }
+              const retryDelay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff
+              console.warn(
+                `Rate limit hit for ${doc.metadata.source}. Retrying (${attempt}/${MAX_RETRIES}) after ${retryDelay}ms...`
               );
+              await delay(retryDelay);
+            } else {
+              // Non-rate-limit error, fail immediately
+              console.error(`Error generating embedding for ${doc.metadata.source}:`, error);
               return null;
             }
-            const retryDelay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff
-            console.warn(
-              `Rate limit hit for ${doc.metadata.source}. Retrying (${attempt}/${MAX_RETRIES}) after ${retryDelay}ms...`
-            );
-            await delay(retryDelay);
-          } else {
-            // Non-rate-limit error, fail immediately
-            console.error(`Error generating embedding for ${doc.metadata.source}:`, error);
-            return null;
           }
         }
       }
+      else{
+        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+          try {
+            const summary = await summariseCode_2(doc);
+            const embedding = await generateEmbedding_2(summary);
+            const result: EmbeddingResult = {
+              summary,
+              embedding,
+              sourceCode: doc.pageContent,
+              fileName: doc.metadata.source,
+            };
+  
+            // Cache the result after successful embedding
+            embeddingCache.set(cacheKey, result);
+            return result;
+          } catch (error: any) {
+            // Handle rate limit errors
+            if (error.response?.status === 429 || error.message.includes("rate limit")) {
+              if (attempt === MAX_RETRIES) {
+                console.error(
+                  `Failed to generate embedding for ${doc.metadata.source} after ${MAX_RETRIES} attempts:`,
+                  error
+                );
+                return null;
+              }
+              const retryDelay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1); // Exponential backoff
+              console.warn(
+                `Rate limit hit for ${doc.metadata.source}. Retrying (${attempt}/${MAX_RETRIES}) after ${retryDelay}ms...`
+              );
+              await delay(retryDelay);
+            } else {
+              // Non-rate-limit error, fail immediately
+              console.error(`Error generating embedding for ${doc.metadata.source}:`, error);
+              return null;
+            }
+          }
+        }
+      }
+
       return null; // Fallback (shouldn’t reach here)
     });
 

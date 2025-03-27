@@ -72,7 +72,7 @@ const CreateProjectPage = () => {
       toast.success("Project created successfully");
       resetForm();
       setIsCreating(false);
-      router.push(`/project/${data.project.id}/dashboard`);
+      router.push(`/project/${data.project.id}/qa`);
     },
     onError: (error) => {
       toast.error(`Failed to create project: ${(error as Error).message}`);

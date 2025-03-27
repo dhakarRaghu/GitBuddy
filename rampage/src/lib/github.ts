@@ -5,6 +5,7 @@ import { Octokit } from "octokit";
 import { prisma } from "@/lib/db";
 import axios from "axios";
 import { aiSummariseCommit } from "./gemini";
+import { aiSummariseCommit_2 } from "./gemini2";
 
 // Octokit instance
 const octokit = new Octokit({
@@ -111,12 +112,19 @@ export async function pollCommits(projectId: string) {
 async function batchSummariseCommits(githubUrl: string, commits: CommitResponse[]): Promise<string[]> {
   const summaries: string[] = [];
 
+  let turn = false;
   for (let i = 0; i < commits.length; i += BATCH_SIZE) {
     const batch = commits.slice(i, i + BATCH_SIZE);
-    const batchSummaries = await Promise.allSettled(
+    let batchSummaries;
+    if(turn) {
+   batchSummaries = await Promise.allSettled(
       batch.map((commit) => summariseCommit(githubUrl, commit.commitHash))
     );
-
+  } else {
+    batchSummaries = await Promise.allSettled(
+      batch.map((commit) => summariseCommit_2(githubUrl, commit.commitHash))
+    );
+  }
     batchSummaries.forEach((result, idx) => {
       summaries[i + idx] = result.status === "fulfilled" ? result.value : "Summary unavailable";
     });
@@ -142,6 +150,36 @@ export async function summariseCommit(githubUrl: string, commitHash: string): Pr
       });
 
       return (await aiSummariseCommit(data)) || "Summary unavailable";
+    } catch (error: any) {
+      if (error.response?.status === 429 || error.response?.status === 403) {
+        if (attempt === MAX_RETRIES) {
+          console.error(`Failed to summarise commit ${commitHash} after ${MAX_RETRIES} attempts:`, error);
+          return "Rate limit reached, retry later";
+        }
+        const retryDelay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+        console.warn(
+          `Rate limit hit for commit ${commitHash}. Retrying (${attempt}/${MAX_RETRIES}) after ${retryDelay}ms...`
+        );
+        await delay(retryDelay);
+      } else {
+        console.error(`Error summarising commit ${commitHash}:`, error);
+        return "Error summarising commit";
+      }
+    }
+  }
+  return "Error summarising commit after max retries";
+}
+export async function summariseCommit_2(githubUrl: string, commitHash: string): Promise<string> {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const { data } = await axios.get(`${githubUrl}/commit/${commitHash}.diff`, {
+        headers: {
+          Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+          Accept: "application/vnd.github.v3.diff",
+        },
+      });
+
+      return (await aiSummariseCommit_2(data)) || "Summary unavailable";
     } catch (error: any) {
       if (error.response?.status === 429 || error.response?.status === 403) {
         if (attempt === MAX_RETRIES) {

@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import { Info, Loader2 } from "lucide-react";
 import { redirect, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { fetchUserRepos, CreateProject } from "@/lib/action";
 import { checkCreditsAndStructure } from "@/lib/githubLoader";
+import { CreateProject } from "@/lib/query";
 
 interface UserRepo {
   name: string;
