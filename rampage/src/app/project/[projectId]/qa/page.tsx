@@ -65,9 +65,10 @@ export default function QA() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, activeAnswer]);
 
-  // Load messages from local storage on mount
+  // Load messages from local storage on mount (project-specific)
   useEffect(() => {
-    const storedData = localStorage.getItem("chatMessages");
+    const storageKey = `chatMessages-${projectId}`;
+    const storedData = localStorage.getItem(storageKey);
     if (storedData) {
       const { messages: storedMessages, storedAt } = JSON.parse(storedData) as StoredMessages;
       const now = Date.now();
@@ -85,24 +86,25 @@ export default function QA() {
         // Set a timeout to clear messages after the remaining time
         const remainingTime = twoHoursInMs - (now - storedAt);
         timeoutRef.current = setTimeout(() => {
-          localStorage.removeItem("chatMessages");
+          localStorage.removeItem(storageKey);
           setMessages([]); // Clear messages in state
         }, remainingTime);
       } else {
         // Messages are expired, clear them
-        localStorage.removeItem("chatMessages");
+        localStorage.removeItem(storageKey);
       }
     }
-  }, []);
+  }, [projectId]);
 
-  // Save messages to local storage whenever they change
+  // Save messages to local storage whenever they change (project-specific)
   useEffect(() => {
+    const storageKey = `chatMessages-${projectId}`;
     if (messages.length > 0) {
       const data: StoredMessages = {
         messages,
         storedAt: Date.now(),
       };
-      localStorage.setItem("chatMessages", JSON.stringify(data));
+      localStorage.setItem(storageKey, JSON.stringify(data));
 
       // Clear any existing timeout
       if (timeoutRef.current) {
@@ -112,7 +114,7 @@ export default function QA() {
       // Set a new timeout to clear messages after 2 hours
       const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
       timeoutRef.current = setTimeout(() => {
-        localStorage.removeItem("chatMessages");
+        localStorage.removeItem(storageKey);
         setMessages([]); // Clear messages in state
       }, twoHoursInMs);
     }
@@ -123,7 +125,7 @@ export default function QA() {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [messages]);
+  }, [messages, projectId]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -199,11 +201,11 @@ export default function QA() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 dark:from-gray-900 dark:to-blue-950 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 flex flex-col">
       {/* Header */}
       <div className="p-4 bg-white dark:bg-gray-800 shadow-sm flex items-center gap-2">
         <Image src="/logo.png" alt="GitBuddy" width={32} height={32} />
-        <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">GitBuddy</h1>
+        <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">GitBuddy</h1>
       </div>
 
       {/* Chat Area */}
@@ -217,7 +219,7 @@ export default function QA() {
               className="text-center py-12"
             >
               <Image src="/logo.png" alt="GitBuddy" width={80} height={80} className="mx-auto mb-4 opacity-70" />
-              <h2 className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mb-2">Welcome to GitBuddy</h2>
+              <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-2">Welcome to GitBuddy</h2>
               <p className="text-gray-500 dark:text-gray-400">Ask questions about your codebase and get detailed answers with code references.</p>
             </motion.div>
           )}
@@ -234,7 +236,7 @@ export default function QA() {
               )}
             >
               {message.type === "answer" && (
-                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center flex-shrink-0">
                   <Image src="/logo.png" alt="GitBuddy" width={24} height={24} />
                 </div>
               )}
@@ -242,8 +244,8 @@ export default function QA() {
                 className={cn(
                   "p-4 rounded-2xl shadow-sm",
                   message.type === "question"
-                    ? "bg-blue-500 text-white max-w-[80%]"
-                    : "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 max-w-full",
+                    ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white max-w-[80%]"
+                    : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border border-gray-200 dark:border-gray-700 max-w-full",
                 )}
               >
                 {message.type === "question" ? (
@@ -251,7 +253,7 @@ export default function QA() {
                 ) : (
                   <MemoizedMarkdown content={message.content} id={message.id} />
                 )}
-                <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   {format(message.timestamp, "MMM d, h:mm a")}
                 </div>
                 {message.type === "answer" && message.filesReferences && message.filesReferences.length > 0 && (
@@ -264,7 +266,7 @@ export default function QA() {
                         <button
                           key={index}
                           onClick={() => openReference(file)}
-                          className="text-xs px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                          className="text-xs px-3 py-1 bg-orange-100 dark:bg-orange-900 text-gray-600 dark:text-gray-400 rounded-full hover:bg-orange-200 dark:hover:bg-orange-800 transition-colors"
                         >
                           {file.fileName} {file.score ? `(${file.score.toFixed(2)})` : ""}
                         </button>
@@ -288,12 +290,12 @@ export default function QA() {
               transition={{ duration: 0.3 }}
               className="flex justify-start gap-3"
             >
-              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center flex-shrink-0">
                 <Image src="/logo.png" alt="GitBuddy" width={24} height={24} />
               </div>
               <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 max-w-full">
                 <MemoizedMarkdown content={activeAnswer} id="streaming-answer" />
-                <div className="mt-2 text-xs text-gray-400 dark:text-gray-500">
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                   {format(new Date(), "MMM d, h:mm a")}
                 </div>
                 {activeReferences.length > 0 && (
@@ -306,7 +308,7 @@ export default function QA() {
                         <button
                           key={index}
                           onClick={() => openReference(file)}
-                          className="text-xs px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                          className="text-xs px-3 py-1 bg-orange-100 dark:bg-orange-900 text-gray-600 dark:text-gray-400 rounded-full hover:bg-orange-200 dark:hover:bg-orange-800 transition-colors"
                         >
                           {file.fileName} {file.score ? `(${file.score.toFixed(2)})` : ""}
                         </button>
@@ -325,11 +327,11 @@ export default function QA() {
               transition={{ duration: 0.3 }}
               className="flex justify-start gap-3"
             >
-              <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900 flex items-center justify-center flex-shrink-0">
                 <Image src="/logo.png" alt="GitBuddy" width={24} height={24} />
               </div>
               <div className="bg-white dark:bg-gray-800 p-4 rounded-2xl">
-                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
               </div>
             </motion.div>
           )}
@@ -345,7 +347,7 @@ export default function QA() {
             placeholder="Ask about your codebase..."
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
-            className="flex-grow min-h-[60px] max-h-[150px] resize-none border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 text-base shadow-sm rounded-xl"
+            className="flex-grow min-h-[60px] max-h-[150px] resize-none border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-orange-500 text-base shadow-sm rounded-xl placeholder:text-gray-500 dark:placeholder:text-gray-400 text-gray-800 dark:text-gray-200"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -356,7 +358,7 @@ export default function QA() {
           <Button
             type="submit"
             disabled={isLoading || !question.trim()}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-200 shadow-sm"
+            className="bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600 text-white font-semibold py-2 px-4 rounded-xl transition-all duration-200 shadow-sm disabled:from-orange-400 disabled:to-pink-400"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />

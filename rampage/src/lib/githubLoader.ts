@@ -8,7 +8,7 @@ import {  summariseCode } from './gemini';
 import { uploadToPinecone } from './pineconedb';
 import { PineconeRecord } from '@pinecone-database/pinecone';
 import { generateEmbedding } from './repoEmbedding';
-import { generateEmbedding_2, summariseCode_2 } from './gemini2';
+import { summariseCode_2 } from './gemini2';
 
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
@@ -313,7 +313,7 @@ export const RepoGenerateEmbeddings = async (
         for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
           try {
             const summary = await summariseCode_2(doc);
-            const embedding = await generateEmbedding_2(summary);
+            const embedding = await generateEmbedding(summary);
             const result: EmbeddingResult = {
               summary,
               embedding,
