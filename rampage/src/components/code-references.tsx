@@ -1,151 +1,125 @@
-// 'use client'
+"use client"
 
-// import React from 'react'
-// import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-// import { ScrollArea } from '@/components/ui/scroll-area'
-// import { cn } from '@/lib/utils'
-// import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-// import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-
-// interface FileReference {
-//   fileName: string
-//   sourceCode: string
-//   summary: string
-// }
-
-// interface CodeReferencesProps {
-//   filesReferences: FileReference[]
-// }
-
-// const CodeReferences: React.FC<CodeReferencesProps> = ({ filesReferences }) => {
-//   const [tab, setTab] = React.useState(filesReferences[0]?.fileName || '')
-
-//   if (filesReferences.length === 0) return null
-
-//   return (
-//     <div className="w-full bg-background border rounded-lg shadow-sm">
-//       <Tabs value={tab} onValueChange={setTab} className="w-full">
-//         <ScrollArea className="w-full">
-//           <TabsList className="flex p-1 bg-muted">
-//             {filesReferences.map((file) => (
-//               <TabsTrigger
-//                 key={file.fileName}
-//                 value={file.fileName}
-//                 className={cn(
-//                   'px-3 py-1.5 text-sm font-medium rounded-md transition-colors whitespace-nowrap',
-//                   'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'
-//                 )}
-//               >
-//                 {file.fileName}
-//               </TabsTrigger>
-//             ))}
-//           </TabsList>
-//         </ScrollArea>
-//         {filesReferences.map((file) => (
-//           <TabsContent key={file.fileName} value={file.fileName} className="mt-2 p-4">
-//             <h3 className="text-lg font-semibold mb-2">Summary</h3>
-//             <p className="text-sm text-muted-foreground mb-4">{file.summary}</p>
-//             <h3 className="text-lg font-semibold mb-2">Source Code</h3>
-//             <ScrollArea className="w-full rounded-md border">
-//               <SyntaxHighlighter 
-//                 language="typescript" 
-//                 style={oneDark}
-//                 customStyle={{
-//                   margin: 0,
-//                   padding: '1rem',
-//                   borderRadius: '0.5rem',
-//                 }}
-//               >
-//                 {file.sourceCode}
-//               </SyntaxHighlighter>
-//             </ScrollArea>
-//           </TabsContent>
-//         ))}
-//       </Tabs>
-//     </div>
-//   )
-// }
-
-// export default CodeReferences
-
-"use client";
-
-import React, { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
-import { motion } from "framer-motion";
-import { MemoizedMarkdown } from "./memorized-markdown";
+import type React from "react"
+import { useState } from "react"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
+import { MemoizedMarkdown } from "./memorized-markdown"
+import { Button } from "@/components/ui/button"
+import { X, Copy, Check } from "lucide-react"
 
 interface FileReference {
-  fileName: string;
-  sourceCode: string;
-  summary: string;
-  score?: number;
+  fileName: string
+  sourceCode: string
+  summary: string
+  score?: number
 }
 
-interface CodeReferencesProps {
-  filesReferences: FileReference[];
+interface CodeReferencePanelProps {
+  file: FileReference
+  onClose: () => void
 }
 
-const CodeReferences: React.FC<CodeReferencesProps> = ({ filesReferences }) => {
-  const [tab, setTab] = useState(filesReferences[0]?.fileName || "");
+const CodeReferencePanel: React.FC<CodeReferencePanelProps> = ({ file, onClose }) => {
+  const [copied, setCopied] = useState(false)
 
-  if (filesReferences.length === 0) return null;
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(file.sourceCode)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="w-full bg-background border rounded-lg shadow-sm"
-    >
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <ScrollArea className="w-full">
-          <TabsList className="flex p-1 bg-muted rounded-t-lg border-b">
-            {filesReferences.map((file) => (
-              <TabsTrigger
-                key={file.fileName}
-                value={file.fileName}
-                className={cn(
-                  "px-4 py-2 text-sm font-medium rounded-md transition-all duration-200",
-                  "hover:bg-muted-foreground/10",
-                  "data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
-                )}
-              >
-                {file.fileName} {file.score ? `(${file.score.toFixed(2)})` : ""}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </ScrollArea>
-        {filesReferences.map((file) => (
-          <TabsContent key={file.fileName} value={file.fileName} className="p-4">
-            <h3 className="text-lg font-semibold text-foreground mb-2">Source Code</h3>
-            <ScrollArea className="w-full rounded-md border bg-gray-900 max-h-[300px]">
-              <SyntaxHighlighter
-                language="typescript"
-                style={oneDark}
-                customStyle={{
-                  margin: 0,
-                  padding: "1rem",
-                  borderRadius: "0.5rem",
-                  fontSize: "0.9rem",
-                }}
-              >
-                {file.sourceCode}
-              </SyntaxHighlighter>
-                <h3 className="text-lg font-semibold text-foreground mb-2">Summary</h3>
-                {/* <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{file.summary}</p> */}
-    
-                 <MemoizedMarkdown content={file.summary} id={file.fileName} />
-            </ScrollArea>
-          </TabsContent>
-        ))}
-      </Tabs>
-    </motion.div>
-  );
-};
+    <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
+      <div
+        className="w-full max-w-2xl bg-white dark:bg-gray-800 h-full shadow-xl border-l border-gray-200 dark:border-gray-700 flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-800 z-10">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-md bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                {file.fileName.split(".").pop()?.toUpperCase() || "FILE"}
+              </span>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate max-w-[300px]">
+              {file.fileName}
+              {file.score && (
+                <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
+                  {file.score.toFixed(2)}
+                </span>
+              )}
+            </h3>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={copyToClipboard}
+              className="h-8 w-8 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
 
-export default CodeReferences;
+        {/* Content */}
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Source Code Section */}
+          <div className="p-4 pb-2">
+            <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-2">Source Code</h4>
+          </div>
+          <div className="px-4 flex-1 overflow-hidden">
+            <div className="rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden h-[calc(50vh-100px)]">
+              <ScrollArea className="h-full" type="always">
+                <div className="overflow-auto">
+                  <SyntaxHighlighter
+                    language="typescript"
+                    style={oneDark}
+                    customStyle={{
+                      margin: 0,
+                      padding: "1rem",
+                      borderRadius: "0.5rem",
+                      fontSize: "0.9rem",
+                      overflow: "visible", // Important to prevent hiding content
+                    }}
+                    wrapLines={false} // Important to allow horizontal scrolling
+                    showLineNumbers={true}
+                  >
+                    {file.sourceCode}
+                  </SyntaxHighlighter>
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+
+          {/* Summary Section */}
+          <div className="p-4 pb-2">
+            <h4 className="text-md font-semibold text-gray-900 dark:text-gray-100 mb-2">Summary</h4>
+          </div>
+          <div className="px-4 pb-4 flex-1 overflow-hidden">
+            <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-4 h-[calc(50vh-100px)]">
+              <ScrollArea className="h-full">
+                <div className="prose prose-sm max-w-none text-gray-700 dark:text-gray-300">
+                  <MemoizedMarkdown content={file.summary} id={file.fileName} />
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default CodeReferencePanel
+
