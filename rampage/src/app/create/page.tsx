@@ -170,7 +170,7 @@ const CreateProjectPage = () => {
 
     try {
       for (let i = 1; i <= 10; i++) {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 3000));
         setProgress({ current: i, total: 10 });
       }
 

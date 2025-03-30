@@ -121,3 +121,22 @@ export async function getCommits(projectId: string) {
 
   return commits;
 }
+export async function GetAllProject() {
+  const session = await getAuthSession();
+  const userId = session?.user?.id;
+  if (!session) redirect("/login");
+
+  try {
+    const projects = await prisma.userToProject.findMany({
+      where: { userId: userId as string },
+      include: {
+        project: true, // Fetch project details
+      },
+    });
+    console.log("Fetched projects:", projects);
+    return projects.map((userToProject) => userToProject.project);
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    throw new Error("Failed to fetch projects");
+  }
+}
