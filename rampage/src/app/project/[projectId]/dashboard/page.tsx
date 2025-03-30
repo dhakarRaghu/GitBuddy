@@ -7,7 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Github } from "lucide-react";
 import Link from "next/link";
 import CommitLog from "../../../../components/commit-log";
-import MeetingCard from "@/components/meeting-card"; // Ensure MeetingCard is a valid React component
+import MeetingCard from "@/components/meetings-list"; // Ensure MeetingCard is a valid React component
 import dynamic from "next/dynamic";
 import TeamMembers from "../../../../components/team-member";
 import { GetProjectById } from "@/lib/query";
