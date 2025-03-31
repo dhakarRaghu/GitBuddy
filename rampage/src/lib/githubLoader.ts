@@ -13,34 +13,6 @@ import { summariseCode_2 } from './gemini2';
 
 const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
 
-// // Fetch files from the repository
-// async function fetchRepoFiles(githubUrl: string): Promise<{ fileName: string; sourceCode: string; summary: string }[]> {
-//   const [owner, repo] = githubUrl.split("/").slice(-2);
-//   const commitsResponse = await axios.get(`https://api.github.com/repos/${owner}/${repo}/commits`, {
-//     headers: { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` },
-//     params: { per_page: 10 },
-//   });
-
-//   const files = [];
-//   for (const commit of commitsResponse.data) {
-//     const diff = await axios
-//       .get(`${githubUrl}/commit/${commit.sha}.diff`, {
-//         headers: {
-//           Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
-//           Accept: "application/vnd.github.v3.diff",
-//         },
-//       })
-//       .then((res) => res.data)
-//       .catch(() => "");
-
-//     files.push({
-//       fileName: `commit_${commit.sha}`,
-//       sourceCode: diff,
-//       summary: commit.commit.message,
-//     });
-//   }
-//   return files;
-// }
 
 // Parse GitHub URL to extract owner and repo
 async function RepoDetails(githubUrl: string) {

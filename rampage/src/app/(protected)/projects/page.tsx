@@ -1,8 +1,11 @@
-"use client"
+"use client";
+
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { GetAllProjects } from '@/lib/query';
 import { useRouter } from 'next/navigation';
+import { ChevronRight } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const Projects = () => {
   const router = useRouter();
@@ -54,87 +57,93 @@ const Projects = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-10 text-red-600">
+      <div className="text-center py-10 text-red-600 dark:text-red-400">
         Error: {error}
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <h1 className="text-3xl font-bold mb-6">Your Projects</h1>
+    <div className="container mx-auto px-6 py-12 max-w-7xl">
+      <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500 mb-8 tracking-tight">
+        Your Projects
+      </h1>
       
       {projects.length === 0 ? (
-        <div className="text-center py-10 text-gray-500">
+        <div className="text-center py-10 text-gray-600 dark:text-gray-400">
           No projects found. Create your first project to get started!
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <div
+            <Card
               key={project.id}
               onClick={() => handleProjectClick(project.id)}
-              className="border rounded-lg p-4 hover:shadow-lg transition-shadow duration-200 cursor-pointer hover:bg-gray-50"
+              className="transition-all duration-300 hover:shadow-lg hover:bg-gradient-to-br hover:from-orange-50 hover:to-pink-50 dark:hover:from-orange-900/20 dark:hover:to-pink-900/20 cursor-pointer border-orange-200 dark:border-orange-900/50 bg-white dark:bg-gray-800"
             >
-              {/* Project Header */}
-              <div className="flex justify-between items-start mb-3">
-                <h2 className="text-xl font-semibold text-blue-600">
-                  {project.name}
-                </h2>
-                <span className={`px-2 py-1 text-xs rounded-full ${
-                  project.indexingStatus === 'PENDING' 
-                    ? 'bg-yellow-100 text-yellow-800'
-                    : 'bg-green-100 text-green-800'
-                }`}>
-                  {project.indexingStatus}
-                </span>
-              </div>
-
-              {/* GitHub Link */}
-              {project.githubUrl && (
-                <a
-                  href={project.githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()} // Prevents card click from triggering
-                  className="text-sm text-gray-600 hover:text-blue-500 flex items-center mb-2"
-                >
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 0a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.8-1.3-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.3 1 .1-.8.4-1.3.7-1.6-2.4-.3-4.9-1.2-4.9-5.3 0-1.2.4-2.2 1.1-2.9-.1-.3-.5-1.4.1-2.9 0 0 .9-.3 2.9 1.1a10 10 0 015.2 0c2-1.4 2.9-1.1 2.9-1.1.6 1.5.2 2.6.1 2.9.7.7 1.1 1.7 1.1 2.9 0 4.1-2.5 5-4.9 5.3.4.3.7 1 .7 1.6v2.2c0 .3.2.7.8.6A12 12 0 0012 0z"/>
-                  </svg>
-                  GitHub
-                </a>
-              )}
-
-              {/* Project Dates */}
-              <div className="text-sm text-gray-500 mb-3">
-                <p>Created: {format(new Date(project.createdAt), 'MMM d, yyyy')}</p>
-                <p>Updated: {format(new Date(project.updatedAt), 'MMM d, yyyy')}</p>
-              </div>
-
-              {/* Project Stats */}
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="bg-gray-100 p-2 rounded">
-                  <span className="font-medium">Commits:</span>{' '}
-                  {project.commits?.length || 0}
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <CardTitle className="text-xl font-semibold text-orange-500 dark:text-orange-400 line-clamp-1">
+                    {project.name}
+                  </CardTitle>
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    project.indexingStatus === 'PENDING'
+                      ? 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-900/50'
+                      : 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-900/50'
+                  }`}>
+                    {project.indexingStatus}
+                  </span>
                 </div>
-                <div className="bg-gray-100 p-2 rounded">
-                  <span className="font-medium">Meetings:</span>{' '}
-                  {project.meetings?.length || 0}
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                {project.githubUrl && (
+                  <a
+                    href={project.githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-sm flex items-center gap-2 text-gray-600 hover:text-orange-500 dark:text-gray-300 dark:hover:text-orange-400 transition-colors duration-200"
+                  >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 0a12 12 0 00-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.5-1.4-1.3-1.8-1.3-1.8-1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1 1.8 2.7 1.3 3.3 1 .1-.8.4-1.3.7-1.6-2.4-.3-4.9-1.2-4.9-5.3 0-1.2.4-2.2 1.1-2.9-.1-.3-.5-1.4.1-2.9 0 0 .9-.3 2.9 1.1a10 10 0 015.2 0c2-1.4 2.9-1.1 2.9-1.1.6 1.5.2 2.6.1 2.9.7.7 1.1 1.7 1.1 2.9 0 4.1-2.5 5-4.9 5.3.4.3.7 1 .7 1.6v2.2c0 .3.2.7.8.6A12 12 0 0012 0z"/>
+                    </svg>
+                    GitHub
+                  </a>
+                )}
+
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  <p>Created: {format(new Date(project.createdAt), 'MMM d, yyyy')}</p>
+                  <p>Updated: {format(new Date(project.updatedAt), 'MMM d, yyyy')}</p>
                 </div>
-                <div className="bg-gray-100 p-2 rounded">
-                  <span className="font-medium">Contributors:</span>{' '}
-                  {project.users?.length || 0}
+
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded border border-orange-200 dark:border-orange-900/50">
+                    <span className="font-medium text-orange-600 dark:text-orange-400">Commits:</span>{' '}
+                    {project.commits?.length || 0}
+                  </div>
+                  <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded border border-orange-200 dark:border-orange-900/50">
+                    <span className="font-medium text-orange-600 dark:text-orange-400">Meetings:</span>{' '}
+                    {project.meetings?.length || 0}
+                  </div>
+                  <div className="bg-orange-50 dark:bg-orange-900/20 p-2 rounded border border-orange-200 dark:border-orange-900/50">
+                    <span className="font-medium text-orange-600 dark:text-orange-400">Contributors:</span>{' '}
+                    {project.users?.length || 0}
+                  </div>
                 </div>
-              </div>
-            </div>
+
+                <div className="flex justify-end">
+                  <ChevronRight className="h-5 w-5 text-orange-500 dark:text-orange-400" />
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

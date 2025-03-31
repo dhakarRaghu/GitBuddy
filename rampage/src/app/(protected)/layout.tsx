@@ -1,10 +1,9 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { signOut, useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation'; // Import useRouter for client-side navigation
+import { useRouter } from 'next/navigation';
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
-
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -25,7 +24,7 @@ type Props = {
 const SidebarLayout = ({ children }: Props) => {
   const { data: session, status } = useSession();
   const [loading, setLoading] = useState(true);
-  const router = useRouter(); // Initialize useRouter
+  const router = useRouter();
 
   useEffect(() => {
     if (status !== 'loading') {
@@ -35,16 +34,16 @@ const SidebarLayout = ({ children }: Props) => {
 
   return (
     <SidebarProvider>
-      <div className="w-full flex h-screen overflow-hidden">
+      <div className="w-full flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1">
           <header className="h-16 border-b bg-white/95 dark:bg-gray-800/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 shadow-sm">
-            <div className="container flex h-full items-center gap-4 px-10">
+            <div className="container flex h-full items-center gap-4 px-10 max-w-7xl">
               <div className="flex-1 flex items-center gap-2">
-                <h1 className="text-2xl font-semibold text-gray-800 dark:text-gray-100 transition-all duration-300 hover:text-blue-500 dark:hover:text-blue-300">
+                <h1 className="text-2xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">
                   Hey,
                 </h1>
-                <p className="text-2xl font-semibold text-gray-700 dark:text-gray-300 mt-1 transition-all duration-300 hover:text-blue-500 dark:hover:text-blue-300">
+                <p className="text-2xl font-semibold text-gray-700 dark:text-gray-300 transition-all duration-300 hover:text-orange-500 dark:hover:text-orange-400">
                   {session?.user.name}
                 </p>
               </div>
@@ -52,60 +51,60 @@ const SidebarLayout = ({ children }: Props) => {
               <div className="flex items-center gap-4">
                 <ModeToggle />
                 <Button
-                  className="cursor-pointer w-20 rounded-lg text-blue-500 dark:text-blue-300 border-gray-300 dark:border-gray-600 transition-all duration-300 hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white hover:shadow-md"
+                  className="w-20 rounded-lg text-orange-500 dark:text-orange-400 border-orange-300 dark:border-orange-700 hover:bg-gradient-to-r hover:from-orange-500 hover:to-pink-500 hover:text-white transition-all duration-300 hover:shadow-md"
                   variant="outline"
-                  onClick={() => router.push('/pricing')} // Navigate to pricing page
+                  onClick={() => router.push('/pricing')}
                 >
                   Upgrade
                 </Button>
 
                 {loading ? (
                   <Avatar>
-                    <AvatarFallback className="bg-gray-200 dark:bg-gray-700 animate-pulse">
+                    <AvatarFallback className="bg-orange-200 dark:bg-orange-900/50 animate-pulse">
                       ...
                     </AvatarFallback>
                   </Avatar>
                 ) : session?.user ? (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Avatar className="cursor-pointer transition-all duration-300 hover:opacity-80 hover:shadow-md">
+                      <Avatar className="cursor-pointer transition-all duration-300 hover:opacity-80 hover:shadow-md ring-2 ring-orange-200 dark:ring-orange-900 hover:ring-orange-500 dark:hover:ring-orange-400">
                         <AvatarImage src={session.user.image || undefined} alt={session.user.name || 'User avatar'} />
-                        <AvatarFallback className="bg-gray-200 dark:bg-gray-700">
+                        <AvatarFallback className="bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400">
                           {session.user.name?.[0]}
                         </AvatarFallback>
                       </Avatar>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
                       align="end"
-                      className="w-56 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg"
+                      className="w-56 bg-white dark:bg-gray-800 border-orange-200 dark:border-orange-900/50 shadow-lg"
                     >
-                      <DropdownMenuLabel className="text-gray-800 dark:text-gray-100">
+                      <DropdownMenuLabel className="text-orange-500 dark:text-orange-400">
                         <div className="flex flex-col space-y-1">
-                          <p className="text-sm font-medium leading-none transition-colors duration-200 hover:text-blue-500 dark:hover:text-blue-300">
+                          <p className="text-sm font-medium leading-none transition-colors duration-200 hover:text-orange-600 dark:hover:text-orange-300">
                             {session.user.name}
                           </p>
-                          <p className="text-xs leading-none text-gray-600 dark:text-gray-400 transition-opacity duration-200 hover:opacity-80">
+                          <p className="text-xs leading-none text-gray-600 dark:text-gray-300 transition-opacity duration-200 hover:opacity-80">
                             {session.user.email}
                           </p>
                         </div>
                       </DropdownMenuLabel>
-                      <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
+                      <DropdownMenuSeparator className="bg-orange-200 dark:bg-orange-900/50" />
                       <DropdownMenuItem
                         onClick={() => router.push('/create')}
-                        className="text-gray-800 dark:text-gray-100 bg-blue-500  hover:bg-blue-700 transition-all -300 hover:shadow-md cursor-pointer"
+                        className="text-gray-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-500 dark:hover:text-orange-400 transition-all duration-200"
                       >
-                        <span className="w-full text-left text-black dark:text-white">Profile</span>
+                        <span className="w-full text-left">Profile</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         onClick={() => router.push('/billing')}
-                        className="text-gray-800 dark:text-gray-100 bg-blue-500 hover:bg-blue-700 transition-all duration-300 hover:shadow-md cursor-pointer"
+                        className="text-gray-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-500 dark:hover:text-orange-400 transition-all duration-200"
                       >
-                        <span className="w-full text-left text-black dark:text-white">Billing</span>
+                        <span className="w-full text-left">Billing</span>
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator className="bg-gray-200 dark:bg-gray-700" />
+                      <DropdownMenuSeparator className="bg-orange-200 dark:bg-orange-900/50" />
                       <DropdownMenuItem
                         onClick={() => signOut({ callbackUrl: '/' })}
-                        className="text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200 focus:text-red-700 dark:focus:text-red-300"
+                        className="text-red-600 dark:text-red-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200"
                       >
                         Sign out
                       </DropdownMenuItem>
@@ -116,8 +115,8 @@ const SidebarLayout = ({ children }: Props) => {
             </div>
           </header>
 
-          <main className="flex-1 overflow-auto p-4">
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm transition-all duration-300 hover:shadow-md">
+          <main className="flex-1 overflow-auto p-6">
+            <div className="rounded-xl border border-orange-200 dark:border-orange-900/50 bg-white dark:bg-gray-800 shadow-sm transition-all duration-300 hover:shadow-md">
               {children}
             </div>
           </main>

@@ -30,37 +30,26 @@ import {
   SidebarMenuButton,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { GetAllProject } from "@/lib/query";
+import { GetAllProjects } from "@/lib/query"; // Corrected import name
 
-// Mock function to fetch projects (replace with actual API call)
 const fetchProjects = async (): Promise<{ id: string; name: string }[]> => {
-  const projects = await GetAllProject();
+  const projects = await GetAllProjects();
   if (Array.isArray(projects)) {
-    return projects.map((project: { id: string; name: string | null }) => ({
-      id: project.id,
-      name: project.name || "Unnamed Project",
-    })).slice(0, 5); // Limit to 5 projects
+    return projects
+      .map((project: { id: string; name: string | null }) => ({
+        id: project.id,
+        name: project.name || "Unnamed Project",
+      }))
+      .slice(0, 5); // Limit to 5 projects
   }
   console.error("Expected an array but received:", projects);
   return [];
 };
 
 const items = [
-  {
-    title: "Create",
-    url: "create",
-    icon: Plus,
-  },
-  {
-    title: "Projects",
-    url: "projects",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Billing",
-    url: "billing",
-    icon: CreditCard,
-  },
+  { title: "Create", url: "create", icon: Plus },
+  { title: "Projects", url: "projects", icon: LayoutDashboard },
+  { title: "Billing", url: "billing", icon: CreditCard },
 ];
 
 export function AppSidebar() {
@@ -68,7 +57,6 @@ export function AppSidebar() {
   const { open, setOpen } = useSidebar();
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([]);
 
-  // Fetch projects on mount
   useEffect(() => {
     const loadProjects = async () => {
       const fetchedProjects = await fetchProjects();
@@ -77,20 +65,17 @@ export function AppSidebar() {
     loadProjects();
   }, []);
 
-  // Extract projectId from the pathname (e.g., /project/cm8h8yd3i000975zdq4tefhsq/dashboard)
-  const segments = pathname.split("/").filter(Boolean); // Split and remove empty segments
-  const projectId = segments[1]; // Assuming the structure is /project/{projectId}/{page}
-
-  // Determine the current page for highlighting (e.g., "dashboard", "qa")
-  const currentPage = segments[2] || ""; // The third segment is the page (e.g., "dashboard")
+  const segments = pathname.split("/").filter(Boolean);
+  const projectId = segments[1];
+  const currentPage = segments[2] || "";
 
   return (
-    <Sidebar collapsible="icon" variant="floating" className="bg-white dark:bg-gray-900">
-      <SidebarHeader className="relative">
+    <Sidebar collapsible="icon" variant="floating" className="bg-white dark:bg-gray-900 shadow-md">
+      <SidebarHeader className="relative p-4">
         <div className="flex items-center gap-2">
           <Image src="/logo.png" alt="logo" width={80} height={80} />
           {open && (
-            <h1 className="text-2xl font-extrabold text-gray-800 dark:text-gray-100 tracking-wide leading-tight drop-shadow-md">
+            <h1 className="text-2xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500 tracking-wide leading-tight drop-shadow-md">
               <Link href="/create">GitBuddy</Link>
             </h1>
           )}
@@ -100,29 +85,29 @@ export function AppSidebar() {
       <SidebarContent>
         {/* Application Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-gray-500 dark:text-gray-400">
+          <SidebarGroupLabel className="text-orange-500 dark:text-orange-400 font-medium">
             Application
           </SidebarGroupLabel>
-
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <Link
-                      href={
-                        item.url === "create"
-                          ? "/create"
-                          : `/${item.url}`
-                      }
+                      href={item.url === "create" ? "/create" : `/${item.url}`}
                       className={cn(
                         "flex items-center gap-2 p-2 rounded-md transition-colors duration-200 ease-in-out",
-                        currentPage === item.url
+                        pathname === `/${item.url}` || currentPage === item.url
                           ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md"
-                          : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-500 dark:hover:text-orange-400"
                       )}
                     >
-                      <item.icon className="w-5 h-5" />
+                      <item.icon className={cn(
+                        "w-5 h-5",
+                        pathname === `/${item.url}` || currentPage === item.url
+                          ? "text-white"
+                          : "text-orange-500 dark:text-orange-400"
+                      )} />
                       <span>{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
@@ -134,7 +119,7 @@ export function AppSidebar() {
 
         {/* Projects Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-gray-500 dark:text-gray-400">
+          <SidebarGroupLabel className="text-orange-500 dark:text-orange-400 font-medium">
             Recent Projects
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -143,16 +128,21 @@ export function AppSidebar() {
                 <SidebarMenuItem key={project.id}>
                   <SidebarMenuButton asChild>
                     <Link
-                      href={`/project/${project.id}/qa`}
+                      href={`/project/${project.id}/dashboard`}
                       className={cn(
                         "flex items-center gap-2 p-2 rounded-md transition-colors duration-200 ease-in-out",
-                        projectId === project.id && currentPage === "qa"
+                        projectId === project.id && currentPage === "dashboard"
                           ? "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md"
-                          : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          : "text-gray-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-900/20 hover:text-orange-500 dark:hover:text-orange-400"
                       )}
                     >
-                      <Folder className="w-5 h-5" />
-                      <span>{project.name}</span>
+                      <Folder className={cn(
+                        "w-5 h-5",
+                        projectId === project.id && currentPage === "dashboard"
+                          ? "text-white"
+                          : "text-orange-500 dark:text-orange-400"
+                      )} />
+                      <span className="truncate">{project.name}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -164,12 +154,12 @@ export function AppSidebar() {
 
       <Button
         className={cn(
-          "w-full flex items-center gap-2 transition-all duration-300",
+          "w-full flex items-center gap-2 p-4 transition-all duration-300 border-t border-orange-200 dark:border-orange-900/50",
           open
-            ? "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-orange-500 hover:to-pink-500 hover:text-white hover:shadow-md"
+            ? "bg-orange-50 dark:bg-orange-900/20 text-orange-500 dark:text-orange-400 hover:bg-gradient-to-r hover:from-orange-500 hover:to-pink-500 hover:text-white"
             : "bg-gradient-to-r from-orange-500 to-pink-500 text-white hover:from-orange-600 hover:to-pink-600"
         )}
-        variant="outline"
+        variant="ghost"
         onClick={() => setOpen(!open)}
       >
         {open ? (
@@ -177,6 +167,7 @@ export function AppSidebar() {
         ) : (
           <ChevronRight className="h-4 w-4 transition-transform duration-200" />
         )}
+        {open && <span>Collapse</span>}
       </Button>
     </Sidebar>
   );
