@@ -1,4 +1,3 @@
-// components/commit-log.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -44,10 +43,18 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl: str
   if (!commits || commits.length === 0) return <NoCommits />;
 
   return (
-    <div className="rounded-lg bg-white dark:bg-gray-900 p-6 shadow-lg border border-gray-200 dark:border-gray-700 transition-all duration-300 hover:shadow-xl">
+    <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-orange-200 dark:border-orange-900/50 transition-all duration-300 hover:shadow-md">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">Commit History</h2>
-        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing || isLoading}>
+        <h2 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500 tracking-wide">
+          Commit History
+        </h2>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing || isLoading}
+          className="border-orange-300 text-orange-500 hover:bg-gradient-to-r hover:from-orange-500 hover:to-pink-500 hover:text-white hover:border-transparent transition-all duration-200"
+        >
           <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
           Refresh
         </Button>
@@ -61,30 +68,30 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl: str
                 "absolute left-0 top-0 flex w-6 justify-center"
               )}
             >
-              <div className="w-px bg-gradient-to-b from-gray-200 to-gray-400 dark:from-gray-700 dark:to-gray-500" />
+              <div className="w-px bg-gradient-to-b from-orange-200 to-pink-200 dark:from-orange-900 dark:to-pink-900" />
             </div>
             <div className="relative mt-3 flex-none">
-              <Avatar className="h-10 w-10 ring-2 ring-gray-200 dark:ring-gray-700">
+              <Avatar className="h-10 w-10 ring-2 ring-orange-200 dark:ring-orange-900 transition-all duration-200 hover:ring-orange-500 dark:hover:ring-orange-400">
                 <AvatarImage src={commit.commitAuthorAvatar} alt={`${commit.commitAuthorName}'s avatar`} />
-                <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+                <AvatarFallback className="bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400">
                   {commit.commitAuthorName.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600">
-                <GitCommit className="h-3 w-3 text-primary" />
+              <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white dark:bg-gray-800 border border-orange-300 dark:border-orange-700">
+                <GitCommit className="h-3 w-3 text-orange-500 dark:text-orange-400" />
               </div>
             </div>
-            <div className="flex-auto rounded-md bg-gray-50 dark:bg-gray-800 p-4 shadow-sm ring-1 ring-gray-200 dark:ring-gray-700 transition-all duration-200 hover:ring-gray-300 dark:hover:ring-gray-600">
+            <div className="flex-auto rounded-md bg-orange-50 dark:bg-orange-900/20 p-4 shadow-sm ring-1 ring-orange-200 dark:ring-orange-900 transition-all duration-200 hover:ring-orange-500 dark:hover:ring-orange-400">
               <div className="flex items-center justify-between">
                 <Link
                   target="_blank"
                   href={`${githubUrl}/commit/${commit.commitHash}`}
-                  className="group inline-flex items-center gap-x-2 text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-blue-500 dark:hover:text-blue-300"
+                  className="group inline-flex items-center gap-x-2 text-sm font-medium text-orange-500 dark:text-orange-400 hover:text-orange-600 dark:hover:text-orange-300 transition-colors duration-200"
                 >
                   <span>{commit.commitAuthorName}</span>
-                  <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-300" />
+                  <ExternalLink className="h-4 w-4 text-orange-400 group-hover:text-orange-500 dark:group-hover:text-orange-300 transition-colors duration-200" />
                 </Link>
-                <time dateTime={commit.commitDate} className="text-xs text-gray-500 dark:text-gray-400">
+                <time dateTime={commit.commitDate} className="text-xs text-gray-600 dark:text-gray-300">
                   {formatDistanceToNow(new Date(commit.commitDate), { addSuffix: true })}
                 </time>
               </div>
@@ -92,13 +99,13 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl: str
                 {commit.commitMessage}
               </h3>
               {commit.summary && (
-                <div className="mt-2 prose dark:prose-invert max-w-none">
+                <div className="mt-2 prose prose-sm dark:prose-invert max-w-none text-gray-600 dark:text-gray-300">
                   <MemoizedMarkdown content={commit.summary} id={commit.id} />
                 </div>
               )}
               <div className="mt-4 flex items-center gap-x-2 text-xs">
-                <span className="font-medium text-gray-500 dark:text-gray-400">Commit:</span>
-                <span className="font-mono text-gray-900 dark:text-gray-200 bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                <span className="font-medium text-gray-600 dark:text-gray-300">Commit:</span>
+                <span className="font-mono text-orange-500 dark:text-orange-400 bg-orange-100 dark:bg-orange-800/20 px-1.5 py-0.5 rounded">
                   {commit.commitHash.slice(0, 7)}
                 </span>
               </div>
@@ -111,16 +118,16 @@ const CommitLog = ({ projectId, githubUrl }: { projectId: string; githubUrl: str
 };
 
 const CommitLogSkeleton = () => (
-  <div className="rounded-lg bg-white dark:bg-gray-900 p-6 shadow-lg border border-gray-200 dark:border-gray-700">
-    <Skeleton className="h-6 w-1/4 mb-4" />
+  <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-orange-200 dark:border-orange-900/50">
+    <Skeleton className="h-6 w-1/4 mb-4 bg-orange-200 dark:bg-orange-900/50" />
     <div className="space-y-6">
       {[...Array(3)].map((_, i) => (
         <div key={i} className="flex gap-x-4">
-          <Skeleton className="h-10 w-10 rounded-full" />
+          <Skeleton className="h-10 w-10 rounded-full bg-orange-200 dark:bg-orange-900/50" />
           <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-1/4" />
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-1/4 bg-orange-200 dark:bg-orange-900/50" />
+            <Skeleton className="h-4 w-full bg-orange-200 dark:bg-orange-900/50" />
+            <Skeleton className="h-4 w-3/4 bg-orange-200 dark:bg-orange-900/50" />
           </div>
         </div>
       ))}
@@ -129,7 +136,7 @@ const CommitLogSkeleton = () => (
 );
 
 const CommitLogError = () => (
-  <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4 shadow-md border border-red-200 dark:border-red-800">
+  <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4 shadow-sm border border-red-200 dark:border-red-800 transition-all duration-200">
     <div className="flex">
       <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clipRule="evenodd" />
@@ -145,10 +152,10 @@ const CommitLogError = () => (
 );
 
 const NoCommits = () => (
-  <div className="text-center p-6 rounded-lg bg-white dark:bg-gray-900 shadow-lg border border-gray-200 dark:border-gray-700">
-    <GitCommit className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+  <div className="text-center p-6 rounded-lg bg-white dark:bg-gray-800 shadow-sm border border-orange-200 dark:border-orange-900/50">
+    <GitCommit className="mx-auto h-12 w-12 text-orange-500 dark:text-orange-400" />
     <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No commits</h3>
-    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by making your first commit.</p>
+    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">Get started by making your first commit.</p>
   </div>
 );
 

@@ -1,39 +1,39 @@
-'use client'
+"use client";
 
-import React, { useState } from 'react'
-import { VideoIcon, ChevronRight, Loader2 } from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
+import React, { useState } from 'react';
+import { VideoIcon, ChevronRight, Loader2 } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 type Issue = {
-  id: string
-  createdAt: Date
-  start: string
-  end: string
-  gist: string
-  headline: string
-  summary: string
-  audioUrl?: string
-}
+  id: string;
+  createdAt: Date;
+  start: string;
+  end: string;
+  gist: string;
+  headline: string;
+  summary: string;
+  audioUrl?: string;
+};
 
 type Meeting = {
-  id: string
-  name: string
-  createdAt: Date
-  meetingUrl: string
-  status: "PROCESSING" | "COMPLETED"
-  issues?: Issue[]
-}
+  id: string;
+  name: string;
+  createdAt: Date;
+  meetingUrl: string;
+  status: "PROCESSING" | "COMPLETED";
+  issues?: Issue[];
+};
 
 type Props = {
-  meeting: Meeting
-}
+  meeting: Meeting;
+};
 
 export default function IssuesList({ meeting }: Props) {
   if (!meeting) {
-    return <div className="text-center p-4">Meeting data not available</div>
+    return <div className="text-center p-4 text-gray-500 dark:text-gray-400">Meeting data not available</div>;
   }
 
   return (
@@ -41,24 +41,23 @@ export default function IssuesList({ meeting }: Props) {
       <MeetingHeader meeting={meeting} />
       <IssuesGrid issues={meeting.issues ?? []} />
     </div>
-  )
+  );
 }
 
 function MeetingHeader({ meeting }: { meeting: Meeting }) {
   return (
-    <div className="flex flex-col md:flex-row items-start md:items-center gap-4 border-b pb-6">
+    <div className="flex flex-col md:flex-row items-start md:items-center gap-4 border-b border-orange-200 dark:border-orange-900/50 pb-6">
       <div className="flex items-center gap-4">
-        <div className="rounded-full bg-primary p-3">
-          <VideoIcon className="h-6 w-6 text-primary-foreground" />
+        <div className="rounded-full bg-gradient-to-r from-orange-500 to-pink-500 p-3">
+          <VideoIcon className="h-6 w-6 text-white" />
         </div>
         <div>
-          <h2 className="text-sm font-medium text-muted-foreground">
+          <h2 className="text-sm font-medium text-gray-600 dark:text-gray-300">
             Meeting on {new Date(meeting.createdAt).toLocaleDateString()}
           </h2>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">
             {meeting.name}
           </h1>
-
           <Badge
             variant={meeting.status === "PROCESSING" ? "outline" : "default"}
             className={meeting.status === "PROCESSING" 
@@ -77,21 +76,22 @@ function MeetingHeader({ meeting }: { meeting: Meeting }) {
       
       <div className="w-full md:w-80 mt-4 md:mt-0 md:ml-auto space-y-3">
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">Uploaded Audio</p>
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-300">Uploaded Audio</p>
         </div>
-        <div className="bg-black/5 dark:bg-white/5 rounded-lg p-3">
-          <audio controls className="w-full" src={meeting.meetingUrl}>
+        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-lg p-3 border border-orange-200 dark:border-orange-900/50">
+          <audio controls className="w-full">
+            <source src={meeting.meetingUrl} type="audio/mpeg" />
             Your browser does not support the audio element.
           </audio>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function IssuesGrid({ issues }: { issues: Issue[] }) {
   if (!issues || issues.length === 0) {
-    return <p className="text-gray-500 text-center mt-4">No issues found.</p>;
+    return <p className="text-gray-500 dark:text-gray-400 text-center mt-4">No issues found.</p>;
   }
 
   return (
@@ -104,34 +104,34 @@ function IssuesGrid({ issues }: { issues: Issue[] }) {
 }
 
 function IssueCard({ issue }: { issue: Issue }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
 
   return (
     <>
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-white dark:bg-gray-900 border-orange-200 dark:border-orange-900/50">
           <DialogHeader>
-            <DialogTitle>{issue.gist}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-orange-500 dark:text-orange-400">{issue.gist}</DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-300">
               {issue.createdAt instanceof Date 
                 ? issue.createdAt.toLocaleDateString() 
                 : new Date(issue.createdAt).toLocaleDateString()}
             </DialogDescription>
           </DialogHeader>
           <div className="mt-4">
-            <h4 className="font-semibold">{issue.headline}</h4>
-            <blockquote className="mt-2 border-l-4 border-primary bg-muted p-4">
-              <p className="text-sm text-muted-foreground">
+            <h4 className="font-semibold text-gray-900 dark:text-gray-100">{issue.headline}</h4>
+            <blockquote className="mt-2 border-l-4 border-orange-500 bg-orange-50 dark:bg-orange-900/20 p-4">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
                 {issue.start} - {issue.end}
               </p>
-              <p className="mt-1 italic text-foreground">
+              <p className="mt-1 italic text-gray-900 dark:text-gray-100">
                 {issue.summary}
               </p>
             </blockquote>
 
             {issue.audioUrl && (
               <div className="mt-4">
-                <h4 className="font-medium text-foreground">Listen to Issue Summary:</h4>
+                <h4 className="font-medium text-gray-900 dark:text-gray-100">Listen to Issue Summary:</h4>
                 <audio controls className="w-full mt-2">
                   <source src={issue.audioUrl} type="audio/mpeg" />
                   Your browser does not support the audio element.
@@ -142,13 +142,17 @@ function IssueCard({ issue }: { issue: Issue }) {
         </DialogContent>
       </Dialog>
       
-      <Card className="transition-shadow hover:shadow-lg rounded-lg overflow-hidden">
+      <Card className="transition-all duration-200 hover:shadow-lg hover:bg-gradient-to-br hover:from-orange-50 hover:to-pink-50 dark:hover:from-orange-900/20 dark:hover:to-pink-900/20 border-orange-200 dark:border-orange-900/50">
         <CardHeader>
-          <CardTitle className="line-clamp-1 text-lg font-semibold">{issue.gist}</CardTitle>
-          <CardDescription className="line-clamp-2 text-sm">{issue.headline}</CardDescription>
+          <CardTitle className="line-clamp-1 text-lg font-semibold text-orange-500 dark:text-orange-400">{issue.gist}</CardTitle>
+          <p className="line-clamp-2 text-sm text-gray-600 dark:text-gray-300">{issue.headline}</p>
         </CardHeader>
         <CardContent className="flex flex-col gap-2">
-          <Button variant="outline" className="w-full flex items-center justify-center" onClick={() => setIsOpen(true)}>
+          <Button 
+            variant="outline" 
+            className="w-full flex items-center justify-center border-orange-300 text-orange-500 hover:bg-gradient-to-r hover:from-orange-500 hover:to-pink-500 hover:text-white hover:border-transparent transition-colors duration-200"
+            onClick={() => setIsOpen(true)}
+          >
             View Details
             <ChevronRight className="ml-2 h-4 w-4" />
           </Button>
@@ -162,5 +166,5 @@ function IssueCard({ issue }: { issue: Issue }) {
         </CardContent>
       </Card>
     </>
-  )
+  );
 }

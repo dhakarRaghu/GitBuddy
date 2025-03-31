@@ -68,20 +68,22 @@ const PRAndIssuesClient = ({ insights }: { insights: RepoStatus }) => {
           transition={{ duration: 0.5 }}
           className="mb-6"
         >
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{insights.name}</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500">
+            {insights.name}
+          </h1>
+          <p className="text-sm text-gray-600 dark:text-gray-300">
             {insights.openIssues} open issues • Avg. issue resolution: {insights.averageIssueResolutionTime} days • Avg. PR review: {insights.averagePRReviewTime} days
           </p>
         </motion.div>
 
         {/* Toggle Buttons */}
-        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+        <div className="flex border-b border-orange-200 dark:border-orange-900/50 mb-6">
           <button
             onClick={() => setActiveTab("prs")}
             className={`px-4 py-2 text-sm font-medium ${
               activeTab === "prs"
-                ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
-                : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                ? "border-b-2 border-orange-500 text-orange-500 dark:text-orange-400"
+                : "text-gray-600 dark:text-gray-300 hover:text-orange-500 dark:hover:text-orange-400"
             }`}
           >
             <GitPullRequest className="inline w-4 h-4 mr-2" />
@@ -91,8 +93,8 @@ const PRAndIssuesClient = ({ insights }: { insights: RepoStatus }) => {
             onClick={() => setActiveTab("issues")}
             className={`px-4 py-2 text-sm font-medium ${
               activeTab === "issues"
-                ? "border-b-2 border-blue-500 text-blue-600 dark:text-blue-400"
-                : "text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+                ? "border-b-2 border-orange-500 text-orange-500 dark:text-orange-400"
+                : "text-gray-600 dark:text-gray-300 hover:text-orange-500 dark:hover:text-orange-400"
             }`}
           >
             <AlertCircle className="inline w-4 h-4 mr-2" />
@@ -107,10 +109,10 @@ const PRAndIssuesClient = ({ insights }: { insights: RepoStatus }) => {
               onValueChange={activeTab === "prs" ? setPRFilter : setIssueFilter}
               defaultValue="all"
             >
-              <SelectTrigger className="w-[150px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+              <SelectTrigger className="w-[150px] bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-900/50 text-orange-500 dark:text-orange-400">
                 <SelectValue placeholder="Filter by state" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-gray-800 border-orange-200 dark:border-orange-900/50">
                 <SelectItem value="all">All</SelectItem>
                 <SelectItem value="open">Open</SelectItem>
                 <SelectItem value="closed">Closed</SelectItem>
@@ -120,10 +122,10 @@ const PRAndIssuesClient = ({ insights }: { insights: RepoStatus }) => {
               onValueChange={activeTab === "prs" ? setPRSort : setIssueSort}
               defaultValue="created-desc"
             >
-              <SelectTrigger className="w-[150px] bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+              <SelectTrigger className="w-[150px] bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-900/50 text-orange-500 dark:text-orange-400">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white dark:bg-gray-800 border-orange-200 dark:border-orange-900/50">
                 <SelectItem value="created-desc">Newest First</SelectItem>
                 <SelectItem value="created-asc">Oldest First</SelectItem>
               </SelectContent>
@@ -148,21 +150,23 @@ const PRAndIssuesClient = ({ insights }: { insights: RepoStatus }) => {
               filteredPRs.map((pr) => (
                 <div
                   key={pr.number}
-                  className="bg-white dark:bg-gray-800 p-4 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="bg-white dark:bg-gray-800 p-4 rounded-md border border-orange-200 dark:border-orange-900/50 hover:bg-gradient-to-br hover:from-orange-50 hover:to-pink-50 dark:hover:from-orange-900/20 dark:hover:to-pink-900/20 transition-colors duration-200"
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex-1">
-                      <p className="text-gray-900 dark:text-gray-100 font-medium">
+                      <p className="text-orange-500 dark:text-orange-400 font-medium">
                         #{pr.number} {pr.title}
                       </p>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                         <User className="inline w-4 h-4 mr-1" />
                         {pr.author} opened on {new Date(pr.createdAt).toLocaleDateString()} • Reviewers: {pr.reviewers.join(", ") || "None"}
                       </div>
                     </div>
                     <Badge
                       variant={pr.state === "open" ? "default" : "secondary"}
-                      className={pr.state === "open" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}
+                      className={pr.state === "open" 
+                        ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-900/50" 
+                        : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 border border-orange-200 dark:border-orange-900/50"}
                     >
                       {pr.state}
                     </Badge>
@@ -179,14 +183,14 @@ const PRAndIssuesClient = ({ insights }: { insights: RepoStatus }) => {
               filteredIssues.map((issue) => (
                 <div
                   key={issue.number}
-                  className="bg-white dark:bg-gray-800 p-4 rounded-md border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  className="bg-white dark:bg-gray-800 p-4 rounded-md border border-orange-200 dark:border-orange-900/50 hover:bg-gradient-to-br hover:from-orange-50 hover:to-pink-50 dark:hover:from-orange-900/20 dark:hover:to-pink-900/20 transition-colors duration-200"
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex-1">
-                      <p className="text-gray-900 dark:text-gray-100 font-medium">
+                      <p className="text-orange-500 dark:text-orange-400 font-medium">
                         #{issue.number} {issue.title}
                       </p>
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      <div className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                         <User className="inline w-4 h-4 mr-1" />
                         {issue.author} opened on {new Date(issue.createdAt).toLocaleDateString()} •{" "}
                         <Tag className="inline w-4 h-4 mr-1" />
@@ -195,7 +199,9 @@ const PRAndIssuesClient = ({ insights }: { insights: RepoStatus }) => {
                     </div>
                     <Badge
                       variant={issue.state === "open" ? "default" : "secondary"}
-                      className={issue.state === "open" ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"}
+                      className={issue.state === "open" 
+                        ? "bg-green-500/10 text-green-600 dark:text-green-400 border border-green-200 dark:border-green-900/50" 
+                        : "bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 border border-orange-200 dark:border-orange-900/50"}
                     >
                       {issue.state}
                     </Badge>

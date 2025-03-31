@@ -113,7 +113,7 @@ export function AppSidebar() {
                       href={
                         item.url === "create"
                           ? "/create"
-                          : `/project/${projectId}/${item.url}`
+                          : `/${item.url}`
                       }
                       className={cn(
                         "flex items-center gap-2 p-2 rounded-md transition-colors duration-200 ease-in-out",
