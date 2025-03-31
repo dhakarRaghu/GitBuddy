@@ -1,7 +1,9 @@
+// components/meetings-list.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -9,27 +11,34 @@ import { Loader2, Calendar, FileText, Clock, MoreHorizontal, Trash2, ExternalLin
 import { toast } from "sonner"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
+import { deleteMeeting } from "@/lib/uploadToVercel" // Import the server action
 
 type Meeting = {
   id: string
   name: string
   createdAt: string
+  meetingUrl: string
   status: "PROCESSING" | "COMPLETED"
-  issue: any[]
+  issue: {
+    id: string
+    start: string
+    end: string
+    gist: string
+    headline: string
+    summary: string
+  }[]
 }
 
 type MeetingsListProps = {
   meetings: Meeting[] | undefined
   meetingsLoading: boolean
-  // deleteMeeting: {
-  //   isPending: boolean
-  //   mutate: (params: { meetingId: string }, options?: any) => void
-  // }
-  // refetch: () => void
+  projectId: string // Add projectId prop
 }
 
-export default function MeetingsList({ meetings, meetingsLoading }: MeetingsListProps) {
+export default function MeetingsList({ meetings, meetingsLoading,projectId }: MeetingsListProps) {
   const [expandedMeeting, setExpandedMeeting] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
@@ -40,21 +49,18 @@ export default function MeetingsList({ meetings, meetingsLoading }: MeetingsList
     })
   }
 
-  // const handleDelete = (meetingId: string) => {
-  //   // deleteMeeting.mutate(
-  //   //   { meetingId },
-  //   //   {
-  //   //   onSuccess: (): void => {
-  //   //     toast.success("Meeting deleted successfully")
-  //   //     refetch()
-  //   //   },
-  //   //   onError: (error: unknown): void => {
-  //   //     toast.error("Failed to delete meeting")
-  //   //     console.error("Error deleting meeting:", error)
-  //   //   },
-  //   //   },
-  //   // )
-  // }
+  const handleDelete = (meetingId: string) => {
+    startTransition(async () => {
+      try {
+        await deleteMeeting(meetingId)
+        toast.success("Meeting deleted successfully")
+        router.refresh() // Refresh the page to refetch meetings
+      } catch (error) {
+        toast.error("Failed to delete meeting")
+        console.error("Error deleting meeting:", error)
+      }
+    })
+  }
 
   return (
     <Card className="w-full border-border/40">
@@ -121,19 +127,15 @@ export default function MeetingsList({ meetings, meetingsLoading }: MeetingsList
                         <Clock className="h-3 w-3" />
                         <span>{formatDate(meeting.createdAt)}</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <FileText className="h-3 w-3" />
-                        <span>{meeting.issue.length} issues</span>
-                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Link href={`/meetings/${meeting.id}`}>
-                      <Button variant="outline" size="sm" className="h-9">
-                        <span className="hidden sm:inline mr-1">View</span>
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </Link>
+                  <Link href={`/project/${projectId}/meetings/${meeting.id}`}>
+                    <Button variant="outline" size="sm" className="h-9">
+                      <span className="hidden sm:inline mr-1">View</span>
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  </Link>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon" className="h-9 w-9">
@@ -144,8 +146,8 @@ export default function MeetingsList({ meetings, meetingsLoading }: MeetingsList
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
                           className="text-destructive focus:text-destructive"
-                          // disabled={deleteMeeting.isPending}
-                          // onClick={() => handleDelete( meeting.id)}
+                          disabled={isPending}
+                          onClick={() => handleDelete(meeting.id)}
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete Meeting
@@ -162,4 +164,3 @@ export default function MeetingsList({ meetings, meetingsLoading }: MeetingsList
     </Card>
   )
 }
-

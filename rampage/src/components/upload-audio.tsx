@@ -1,3 +1,4 @@
+// components/upload-audio.tsx
 "use client"
 
 import type React from "react"
@@ -8,11 +9,15 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/componen
 import { Upload, Copy, Check, Music } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
-import { createMeeting, uploadAudio } from "@/lib/uploadToVercel"
+import { uploadAudio, createMeeting } from "@/lib/uploadToVercel" // Updated import
 import { Progress } from "@/components/ui/progress"
 import { cn } from "@/lib/utils"
 
-export default function UploadAudio(projectId : string) {
+type UploadAudioProps = {
+  projectId: string
+}
+
+export default function UploadAudio({ projectId }: UploadAudioProps) {
   const router = useRouter()
   const inputFileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -36,19 +41,17 @@ export default function UploadAudio(projectId : string) {
       return
     }
     setFile(selectedFile)
-    // Reset URL if a new file is selected
     setUploadedUrl(null)
     setCopied(false)
   }
 
   const simulateProgress = () => {
-    // Simulate upload progress
     let progress = 0
     const interval = setInterval(() => {
       progress += Math.random() * 10
       if (progress > 95) {
         clearInterval(interval)
-        progress = 95 // Hold at 95% until actual upload completes
+        progress = 95
       }
       setUploadProgress(Math.min(progress, 95))
     }, 300)
@@ -64,15 +67,27 @@ export default function UploadAudio(projectId : string) {
       const progressInterval = simulateProgress()
 
       const url = await uploadAudio(file)
-      const meeting = await createMeeting(url ,projectId , file.name[0])
-      console.log("Meeting created:", meeting)
+
+      // Log the projectId to debug
+      console.log("Project ID before creating meeting:", projectId)
+
+      // Ensure projectId is a string
+      if (typeof projectId !== "string") {
+        throw new Error("projectId must be a string")
+      }
+
+      const meeting = await createMeeting(url, projectId , file.name)
 
       clearInterval(progressInterval)
       setUploadProgress(100)
 
       setUploadedUrl(url)
-      toast.success("Audio uploaded successfully!")
+      toast.success("Audio uploaded and meeting created successfully!")
+
+      // router.push(`/meetings/${meeting.id}`)
+      router.push(`/project/${projectId}/meetings/${meeting.id}`)
     } catch (err) {
+      console.error("Upload error:", err)
       toast.error("Upload failed. Please try again.")
     } finally {
       setUploading(false)
@@ -85,7 +100,6 @@ export default function UploadAudio(projectId : string) {
       await navigator.clipboard.writeText(uploadedUrl)
       setCopied(true)
       toast.success("URL copied to clipboard!")
-      // Reset the copied state after 2 seconds
       setTimeout(() => setCopied(false), 2000)
     } catch (err) {
       toast.error("Failed to copy URL.")
@@ -176,39 +190,6 @@ export default function UploadAudio(projectId : string) {
         <Button type="button" disabled={uploading || !file} onClick={handleUpload} className="w-full">
           {uploading ? "Uploading..." : "Upload Audio"}
         </Button>
-
-        {uploadedUrl && (
-          <div className="w-full space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Uploaded Audio</p>
-              <Button size="sm" variant="outline" onClick={copyToClipboard} className="h-8 gap-1">
-                {copied ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 text-green-500" />
-                    <span className="text-xs">Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-3.5 w-3.5" />
-                    <span className="text-xs">Copy URL</span>
-                  </>
-                )}
-              </Button>
-            </div>
-
-            <div className="p-3 bg-muted/50 rounded-lg overflow-hidden">
-              <p className="text-xs text-muted-foreground overflow-x-auto scrollbar-none whitespace-nowrap pb-1">
-                {uploadedUrl}
-              </p>
-            </div>
-
-            <div className="bg-black/5 dark:bg-white/5 rounded-lg p-3">
-              <audio controls className="w-full" src={uploadedUrl}>
-                Your browser does not support the audio element.
-              </audio>
-            </div>
-          </div>
-        )}
       </CardFooter>
     </Card>
   )
