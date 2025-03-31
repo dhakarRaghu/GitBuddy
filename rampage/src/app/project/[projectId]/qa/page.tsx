@@ -47,6 +47,7 @@ export default function QA() {
   const [activeReferences, setActiveReferences] = useState<FileReference[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedReference, setSelectedReference] = useState<FileReference | null>(null);
+  const [currentReferenceFiles, setCurrentReferenceFiles] = useState<FileReference[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -192,12 +193,18 @@ export default function QA() {
     }
   };
 
-  const openReference = (file: FileReference) => {
+  const openReference = (file: FileReference, allReferences: FileReference[]) => {
     setSelectedReference(file);
+    setCurrentReferenceFiles(allReferences);
   };
 
   const closeReference = () => {
     setSelectedReference(null);
+    setCurrentReferenceFiles([]);
+  };
+
+  const changeReference = (file: FileReference) => {
+    setSelectedReference(file);
   };
 
   return (
@@ -265,7 +272,7 @@ export default function QA() {
                       {message.filesReferences.map((file, index) => (
                         <button
                           key={index}
-                          onClick={() => openReference(file)}
+                          onClick={() => openReference(file, message.filesReferences || [])}
                           className="text-xs px-3 py-1 bg-orange-100 dark:bg-orange-900 text-gray-600 dark:text-gray-400 rounded-full hover:bg-orange-200 dark:hover:bg-orange-800 transition-colors"
                         >
                           {file.fileName} {file.score ? `(${file.score.toFixed(2)})` : ""}
@@ -307,7 +314,7 @@ export default function QA() {
                       {activeReferences.map((file, index) => (
                         <button
                           key={index}
-                          onClick={() => openReference(file)}
+                          onClick={() => openReference(file, activeReferences)}
                           className="text-xs px-3 py-1 bg-orange-100 dark:bg-orange-900 text-gray-600 dark:text-gray-400 rounded-full hover:bg-orange-200 dark:hover:bg-orange-800 transition-colors"
                         >
                           {file.fileName} {file.score ? `(${file.score.toFixed(2)})` : ""}
@@ -379,7 +386,12 @@ export default function QA() {
             transition={{ duration: 0.3, ease: "easeInOut" }}
             onClick={closeReference}
           >
-            <CodeReferencePanel file={selectedReference} onClose={closeReference} />
+            <CodeReferencePanel 
+              file={selectedReference} 
+              allReferences={currentReferenceFiles}
+              onClose={closeReference}
+              onChangeReference={changeReference}
+            />
           </motion.div>
         )}
       </AnimatePresence>

@@ -57,16 +57,6 @@ const items = [
     icon: LayoutDashboard,
   },
   {
-    title: "Meetings",
-    url: "meetings",
-    icon: Presentation,
-  },
-  {
-    title: "Analytics",
-    url: "analytics",
-    icon: Presentation,
-  },
-  {
     title: "Billing",
     url: "billing",
     icon: CreditCard,

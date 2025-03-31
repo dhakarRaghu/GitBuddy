@@ -23,12 +23,12 @@ import { useState, useEffect } from "react";
 
 const items = [
   {
-    title: "Dashboard",
+    title: "Commits",
     url: "dashboard",
     icon: LayoutDashboard,
   },
   {
-    title: "Q&A",
+    title: "Ask me",
     url: "qa",
     icon: Bot,
   },

@@ -11,7 +11,20 @@ interface Props {
 
 export default async function Home({ params }: Props) {
   const { projectId } = await params
-  const meetings = await fetchMeetings(projectId)
+  const rawMeetings = await fetchMeetings(projectId)
+  const meetings = rawMeetings.map(meeting => ({
+    ...meeting,
+    issue: meeting.issues.map(issue => ({
+      id: issue.id,
+      start: issue.start,
+      end: issue.end,
+      gist: issue.gist,
+      headline: issue.headline,
+      summary: issue.summary,
+    })),
+    createdAt: meeting.createdAt.toISOString(),
+    updatedAt: meeting.updatedAt.toISOString(),
+  }))
 
   return (
     <main className="container mx-auto py-8 px-4">
