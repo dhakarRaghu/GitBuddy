@@ -166,3 +166,75 @@ export async function GetAllProjects() {
     throw new Error("Failed to fetch projects");
   }
 }
+
+
+export async function JoinProject(projectId: string ) {
+  const session = await getAuthSession();
+  if (!session) redirect("/login");
+  try {   
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+    });
+    if(!project) {
+      throw new Error("Project not found");
+    }
+    const userId = session.user.id;
+    const existingMembership = await prisma.userToProject.findUnique({
+      where: {
+        userId_projectId: {
+          userId,
+          projectId,
+        },
+      },
+    });
+    if (existingMembership) {
+      // throw new Error("User is already a member of this project");
+      return { message: "User is already a member of this project" };
+    }
+    // Add the user to the project
+    await prisma.userToProject.create({
+      data: {
+        userId,
+        projectId,
+      },
+    });
+    return { message: "User successfully added to the project" };
+
+  }
+  catch (error) {
+    console.error("Error joining project:", error);
+    throw new Error(`Failed to join project: ${(error as Error).message}`);
+  } finally {
+    await prisma.$disconnect();
+  }
+
+}
+
+export async function allMembers(projectId : string){
+  try{
+    const userToProjects = await prisma.userToProject.findMany({
+      where: { projectId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
+    });
+  
+    return userToProjects.map((utp) => ({
+      id: utp.user.id,
+      name: utp.user.name || "Unknown",
+      image: utp.user.image || "/default-avatar.png", // Fallback image
+    }));
+  }
+  catch (error) {
+    console.error("Error fetching members:", error);
+    throw new Error(`Failed to fetch members: ${(error as Error).message}`);
+  } finally {
+    await prisma.$disconnect();
+  }
+}

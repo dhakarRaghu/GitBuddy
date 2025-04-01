@@ -120,10 +120,12 @@ async function batchSummariseCommits(githubUrl: string, commits: CommitResponse[
    batchSummaries = await Promise.allSettled(
       batch.map((commit) => summariseCommit(githubUrl, commit.commitHash))
     );
+    turn = false;
   } else {
     batchSummaries = await Promise.allSettled(
       batch.map((commit) => summariseCommit_2(githubUrl, commit.commitHash))
     );
+    turn = true;
   }
     batchSummaries.forEach((result, idx) => {
       summaries[i + idx] = result.status === "fulfilled" ? result.value : "Summary unavailable";
