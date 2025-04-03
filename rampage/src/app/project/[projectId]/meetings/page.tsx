@@ -7,24 +7,6 @@ import { fetchMeetings } from "@/lib/uploadToVercel";
 interface Props {
   params: Promise<{ projectId: string }>;
 }
-interface Meeting {
-  id: string;
-  name: string;
-  projectId: string;
-  meetingUrl: string;
-  status: "pending" | "completed" | "failed"; // Replace with actual statuses if different
-  createdAt: string;
-  updatedAt: string;
-  issue: {
-    id: string;
-    start: string;
-    end: string;
-    gist: string;
-    headline: string;
-    summary: string;
-  }; 
-}
-
 
 export default async function Home({ params }: Props) {
   const { projectId } = await params;

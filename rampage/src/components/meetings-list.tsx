@@ -30,7 +30,7 @@ type Meeting = {
 }
 
 type MeetingsListProps = {
-  meetings: Meeting[] | undefined
+  meetings: Meeting[] 
   meetingsLoading: boolean
   projectId: string // Add projectId prop
 }
