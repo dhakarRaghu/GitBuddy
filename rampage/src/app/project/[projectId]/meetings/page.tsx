@@ -4,6 +4,28 @@ import MeetingsList from "@/components/meetings-list";
 import UploadAudio from "@/components/upload-audio";
 import { fetchMeetings } from "@/lib/uploadToVercel";
 
+// Define the Issue interface
+interface Issue {
+  id: string;
+  start: string;
+  end: string;
+  gist: string;
+  headline: string;
+  summary: string;
+}
+
+// Define the Meeting interface
+interface Meeting {
+  id: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  meetingUrl: string;
+  status: "PROCESSING" | "COMPLETED";
+  issues: Issue[];
+  // Add other properties returned by fetchMeetings if any
+}
+
 interface Props {
   params: Promise<{ projectId: string }>;
 }
@@ -11,9 +33,9 @@ interface Props {
 export default async function Home({ params }: Props) {
   const { projectId } = await params;
   const rawMeetings = await fetchMeetings(projectId);
-  const meetings = rawMeetings.map(meeting => ({
+  const meetings = rawMeetings.map((meeting: Meeting) => ({
     ...meeting,
-    issues: meeting.issues.map(issue => ({
+    issues: meeting.issues.map((issue: Issue) => ({
       id: issue.id,
       start: issue.start,
       end: issue.end,
@@ -49,7 +71,6 @@ export default async function Home({ params }: Props) {
         {/* Meetings List Section */}
       </div>
       <div className="mt-8">
-
         <section className="bg-white dark:bg-gray-800 rounded-xl shadow-md border border-orange-200 dark:border-orange-900/50 p-6 transition-all duration-300 hover:shadow-lg">
           <h2 className="text-2xl font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-pink-500 mb-6">
             Your Meetings
