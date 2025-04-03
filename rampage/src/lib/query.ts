@@ -238,3 +238,23 @@ export async function allMembers(projectId : string){
     await prisma.$disconnect();
   }
 }
+
+export async function MeetingStatus(meetingId: string) {
+  try {
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: meetingId },
+      select: { status: true },
+    });
+
+    if (!meeting) {
+      throw new Error("Meeting not found");
+    }
+
+    return meeting;
+  } catch (error) {
+    console.error("Error fetching meeting status:", error);
+    throw new Error(`Failed to fetch meeting status: ${(error as Error).message}`);
+  } finally {
+    await prisma.$disconnect();
+  }
+}

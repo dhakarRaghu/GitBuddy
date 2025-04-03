@@ -9,6 +9,7 @@ import CommitLog from "../../../../components/commit-log";
 import TeamMembers from "../../../../components/team-member";
 import { GetProjectById } from "@/lib/query";
 import InviteButton from "../../../../components/invite-button";
+import Loading from "./loading";
 
 const DashBoardPage = ({ params }: { params: Promise<{ projectId: string }> }) => {
   const { data: session, status } = useSession();
@@ -24,7 +25,7 @@ const DashBoardPage = ({ params }: { params: Promise<{ projectId: string }> }) =
   });
 
   if (projectLoading) {
-    return <div className="container mx-auto py-8">Loading project...</div>;
+    return  Loading();
   }
 
   if (projectError || !project) {

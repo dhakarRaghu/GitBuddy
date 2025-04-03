@@ -15,6 +15,7 @@ import {
   SiYaml,
 } from 'react-icons/si';
 import { FileCode, FileText, FileJson, File } from 'lucide-react';
+import Loading from './loading';
 
 // Interfaces
 interface ContributorStats {
@@ -90,7 +91,7 @@ const RepoInsights = ({ projectId }: { projectId: string }) => {
     fetchInsights();
   }, [projectId]);
 
-  if (loading) return <div className="text-gray-500 text-center py-8">Loading...</div>;
+  if (loading) return Loading();
   if (error) return <div className="text-red-500 text-center py-8">Error: {error}</div>;
   if (!insights) return null;
 

@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { VideoIcon, ChevronRight, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { MeetingStatus } from '@/lib/query';
 
 type Issue = {
   id: string;
@@ -32,13 +33,37 @@ type Props = {
 };
 
 export default function IssuesList({ meeting }: Props) {
+  const [meetingStatus, setMeetingStatus] = useState(meeting.status);
+
+  // Polling for status updates if the meeting is in PROCESSING state
+  useEffect(() => {
+    if (meetingStatus !== "PROCESSING") return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await MeetingStatus(meeting.id);
+        const data =  response
+       
+          if (data.status === "COMPLETED") {
+            // Refresh the page to get updated issues
+            window.location.reload();
+          }
+        
+      } catch (error) {
+        console.error("Error polling meeting status:", error);
+      }
+    }, 1000); 
+
+    return () => clearInterval(interval);
+  }, [meetingStatus, meeting.id]);
+
   if (!meeting) {
     return <div className="text-center p-4 text-gray-500 dark:text-gray-400">Meeting data not available</div>;
   }
 
   return (
     <div className="space-y-8">
-      <MeetingHeader meeting={meeting} />
+      <MeetingHeader meeting={{ ...meeting, status: meetingStatus }} />
       <IssuesGrid issues={meeting.issues ?? []} />
     </div>
   );

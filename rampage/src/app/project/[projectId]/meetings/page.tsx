@@ -13,7 +13,7 @@ export default async function Home({ params }: Props) {
   const rawMeetings = await fetchMeetings(projectId);
   const meetings = rawMeetings.map(meeting => ({
     ...meeting,
-    issue: meeting.issues.map(issue => ({
+    issues: meeting.issues.map(issue => ({
       id: issue.id,
       start: issue.start,
       end: issue.end,

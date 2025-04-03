@@ -121,12 +121,14 @@ const CommitLogSkeleton = () => (
   <div className="rounded-lg bg-white dark:bg-gray-800 p-6 shadow-sm border border-orange-200 dark:border-orange-900/50">
     <Skeleton className="h-6 w-1/4 mb-4 bg-orange-200 dark:bg-orange-900/50" />
     <div className="space-y-6">
-      {[...Array(3)].map((_, i) => (
+      {[...Array(5)].map((_, i) => (
         <div key={i} className="flex gap-x-4">
           <Skeleton className="h-10 w-10 rounded-full bg-orange-200 dark:bg-orange-900/50" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-1/4 bg-orange-200 dark:bg-orange-900/50" />
             <Skeleton className="h-4 w-full bg-orange-200 dark:bg-orange-900/50" />
+            <Skeleton className="h-4 w-3/4 bg-orange-200 dark:bg-orange-900/50" />
+            <Skeleton className="h-4 w-3/4 bg-orange-200 dark:bg-orange-900/50" />
             <Skeleton className="h-4 w-3/4 bg-orange-200 dark:bg-orange-900/50" />
           </div>
         </div>
