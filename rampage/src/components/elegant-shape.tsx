@@ -194,13 +194,15 @@ export function HeroGeometric({
               Get Started
             </motion.button>
             </Link>
+            <Link href={'/login'} >
             <motion.button
               className="px-6 py-3 rounded-lg bg-white/5 border border-white/10 text-white/80 font-medium backdrop-blur-sm hover:bg-white/10 transition-all"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
-              Learn More
+              Login
             </motion.button>
+            </Link>
           </motion.div>
         </div>
       </div>
