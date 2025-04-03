@@ -1,4 +1,3 @@
-// lib/github.ts
 "use server";
 
 import { Octokit } from "octokit";
@@ -8,9 +7,11 @@ import { aiSummariseCommit } from "./gemini";
 import { aiSummariseCommit_2 } from "./gemini2";
 
 // Octokit instance
-const octokit = new Octokit({
-  auth: process.env.GITHUB_TOKEN,
-});
+const githubToken = process.env.GITHUB_TOKEN;
+if (!githubToken) {
+  throw new Error("GITHUB_TOKEN is not defined in the environment variables.");
+}
+const octokit = new Octokit({ auth: githubToken });
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000; // 1 second base delay
@@ -60,7 +61,7 @@ export async function getCommitHashes(githubUrl: string, since?: string): Promis
         await delay(retryDelay);
       } else {
         console.error("Error fetching commits:", error);
-        throw new Error("Failed to fetch commits");
+        throw error;
       }
     }
   }
@@ -68,7 +69,7 @@ export async function getCommitHashes(githubUrl: string, since?: string): Promis
 }
 
 // Poll commits with rate limit handling
-export async function pollCommits(projectId: string) {
+export async function pollCommits(projectId: string): Promise<{ count: number }> {
   console.log(`Polling commits for project ${projectId}`);
 
   const { githubUrl } = await fetchProjectGithubUrl(projectId);
@@ -105,7 +106,7 @@ export async function pollCommits(projectId: string) {
   });
 
   console.log("Commits saved:", commits);
-  return commits;
+  return { count: commits.count };
 }
 
 // Batch summarize commits with rate limit handling
@@ -116,17 +117,17 @@ async function batchSummariseCommits(githubUrl: string, commits: CommitResponse[
   for (let i = 0; i < commits.length; i += BATCH_SIZE) {
     const batch = commits.slice(i, i + BATCH_SIZE);
     let batchSummaries;
-    if(turn) {
-   batchSummaries = await Promise.allSettled(
-      batch.map((commit) => summariseCommit(githubUrl, commit.commitHash))
-    );
-    turn = false;
-  } else {
-    batchSummaries = await Promise.allSettled(
-      batch.map((commit) => summariseCommit_2(githubUrl, commit.commitHash))
-    );
-    turn = true;
-  }
+    if (turn) {
+      batchSummaries = await Promise.allSettled(
+        batch.map((commit) => summariseCommit(githubUrl, commit.commitHash))
+      );
+      turn = false;
+    } else {
+      batchSummaries = await Promise.allSettled(
+        batch.map((commit) => summariseCommit_2(githubUrl, commit.commitHash))
+      );
+      turn = true;
+    }
     batchSummaries.forEach((result, idx) => {
       summaries[i + idx] = result.status === "fulfilled" ? result.value : "Summary unavailable";
     });
@@ -142,9 +143,11 @@ async function batchSummariseCommits(githubUrl: string, commits: CommitResponse[
 
 // Single commit summarization with retry logic
 export async function summariseCommit(githubUrl: string, commitHash: string): Promise<string> {
+  const [owner, repo] = githubUrl.split("/").slice(-2);
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${commitHash}`;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const { data } = await axios.get(`${githubUrl}/commit/${commitHash}.diff`, {
+      const { data } = await axios.get(apiUrl, {
         headers: {
           Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
           Accept: "application/vnd.github.v3.diff",
@@ -171,10 +174,13 @@ export async function summariseCommit(githubUrl: string, commitHash: string): Pr
   }
   return "Error summarising commit after max retries";
 }
+
 export async function summariseCommit_2(githubUrl: string, commitHash: string): Promise<string> {
+  const [owner, repo] = githubUrl.split("/").slice(-2);
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${commitHash}`;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      const { data } = await axios.get(`${githubUrl}/commit/${commitHash}.diff`, {
+      const { data } = await axios.get(apiUrl, {
         headers: {
           Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
           Accept: "application/vnd.github.v3.diff",
@@ -218,6 +224,6 @@ async function filterUnprocessedCommits(projectId: string, commitHashes: CommitR
     where: { projectId },
     select: { commitHash: true },
   });
-  const processedHashSet = new Set(processedCommits.map((c) => c.commitHash));
+  const processedHashSet = new Set(processedCommits.map((c: { commitHash: string }) => c.commitHash));
   return commitHashes.filter((commit) => !processedHashSet.has(commit.commitHash));
 }
