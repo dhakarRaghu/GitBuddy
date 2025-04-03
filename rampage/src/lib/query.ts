@@ -236,7 +236,7 @@ export async function allMembers(projectId : string){
       },
     });
   
-    return userToProjects.map((utp) => ({
+    return userToProjects.map((utp : any) => ({
       id: utp.user.id,
       name: utp.user.name || "Unknown",
       image: utp.user.image || "/default-avatar.png", // Fallback image
