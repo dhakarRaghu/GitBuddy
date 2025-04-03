@@ -144,7 +144,7 @@ export async function GetAllProject() {
 
     console.log("Fetched projects:", projects);
 
-    return projects.map((userToProject) => userToProject.project);
+    return projects.map((userToProject: { project: any }) => userToProject.project);
   } catch (error) {
     console.error("Error fetching projects:", error);
     throw new Error("Failed to fetch projects");
