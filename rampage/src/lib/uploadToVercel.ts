@@ -3,7 +3,6 @@
 
 import { put } from "@vercel/blob"
 import { prisma } from "./db"
-import { MeetingStatus } from "@prisma/client"
 import { processMeeting } from "./assembly"
 
 export const uploadAudio = async (file: File) => {
@@ -31,7 +30,7 @@ export async function createMeeting(meetingUrl: string, projectId: string , file
         name: fileName || "New Meeting", // You can make this dynamic based on user input
         meetingUrl,
         projectId, // Fixed: Ensure projectId is a string
-        status: MeetingStatus.PROCESSING,
+        status: "PROCESSING",
       },
       include: {
         issues: true,
