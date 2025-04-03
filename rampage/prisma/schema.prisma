@@ -50,8 +50,7 @@ model User {
   sessions      Session[]
   credits       Int       @default(200)
 
-  projects      UserToProject[] 
-  questions     Question[]     
+  projects      UserToProject[]    
 }
 
 model Project {
@@ -64,8 +63,7 @@ model Project {
   deletedAt   DateTime?
   indexingStatus String    @default("PENDING")
   commits     Commit[]
-  users       UserToProject[] 
-  questions   Question[]      
+  users       UserToProject[]    
   meetings    Meeting[]
 }
 
@@ -85,12 +83,16 @@ model UserToProject {
   @@index([projectId])
 }
 
+enum MeetingStatus {
+  PROCESSING
+  COMPLETED
+}
 model Meeting {
   id          String        @id @default(cuid())
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   name        String
-  meetingUrl  String        // S3 storage URL
+  meetingUrl  String       
   projectId   String
   status      MeetingStatus @default(PROCESSING)
 
@@ -117,29 +119,6 @@ model Issue {
   @@index([meetingId])
 }
 
-enum MeetingStatus {
-  PROCESSING
-  COMPLETED
-}
-
-model Question {
-  id              String   @id @default(cuid())
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  question        String   @db.Text // Larger text field
-  answer          String   @db.Text
-  filesReferences Json?
-
-  projectId       String
-  userId          String
-
-  project         Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([projectId])
-  @@index([userId])
-}
 
 model Commit {
   id                  String   @id @default(cuid())

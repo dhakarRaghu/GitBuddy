@@ -3,7 +3,12 @@
 
 import { AssemblyAI } from 'assemblyai'
 import { prisma } from './db'
-import { MeetingStatus } from '@prisma/client'
+
+// Define or import MeetingStatus
+enum MeetingStatus {
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+}
 
 const client = new AssemblyAI({ apiKey: process.env.ASSEMBLYAI_API_KEY! })
 
